@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between; margin-bottom:16px;">
+  <h1 style="margin:0;">Your agents</h1>
+  <a class="btn" href="/agents/new">+ New agent</a>
+</div>
+{% if demo_mode %}
+  <p><span class="badge">DEMO MODE</span> <span class="muted">No API key set — replies are keyword-based. Add GABBY_API_KEY for a real LLM.</span></p>
+{% else %}
+  <p><span class="badge live">LIVE</span> <span class="muted">Replies powered by {{ config.get("GABBY_MODEL_HINT", "") }}.</span></p>
+{% endif %}
+{% if agents %}
+  <div class="card" style="padding:0;">
+    <table>
+      <tr><th>Name</th><th>Public key</th><th>Created</th><th></th></tr>
+      {% for a in agents %}
+      <tr>
+        <td><strong>{{ a.name }}</strong></td>
+        <td class="muted">{{ a.public_key[:10] }}…</td>
+        <td class="muted">{{ a.created_at.strftime("%Y-%m-%d") }}</td>
+        <td>
+          <div class="row">
+            <a class="btn small secondary" href="/agents/{{ a.id }}/edit">Edit</a>
+            <a class="btn small secondary" href="/agents/{{ a.id }}/knowledge">Knowledge</a>
+            <a class="btn small secondary" href="/agents/{{ a.id }}/chat">Test chat</a>
+            <form method="post" action="/agents/{{ a.id }}/delete" style="display:inline;"
+                  onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
+              <button class="btn small danger" type="submit">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+{% else %}
+  <div class="card" style="text-align:center;">
+    <p class="lead">No agents yet. Create your first one — it takes about a minute.</p>
+    <a class="btn" href="/agents/new">+ New agent</a>
+  </div>
+{% endif %}
+{% endblock %}

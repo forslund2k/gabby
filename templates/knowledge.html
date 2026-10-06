@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Knowledge — {{ agent.name }}{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between; margin-bottom:16px;">
+  <h1 style="margin:0;">Knowledge: {{ agent.name }}</h1>
+  <a class="btn secondary" href="/agents/{{ agent.id }}/chat">Test chat →</a>
+</div>
+
+<div class="card">
+  <h2>1 · Paste text</h2>
+  <form method="post">
+    <input type="hidden" name="action" value="paste">
+    <label>Label</label>
+    <input type="text" name="label" placeholder="e.g. Business hours & location">
+    <label>Text</label>
+    <textarea name="text" placeholder="Paste anything customers ask about…"></textarea>
+    <p style="margin-top:12px;"><button class="btn" type="submit">Add text</button></p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>2 · Upload a file</h2>
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="action" value="upload">
+    <label>Text file (.txt or .md)</label>
+    <input type="file" name="file" accept=".txt,.md">
+    <p style="margin-top:12px;"><button class="btn" type="submit">Upload</button></p>
+  </form>
+</div>
+
+<div class="card">
+  <h2>3 · Crawl your website</h2>
+  <form method="post">
+    <input type="hidden" name="action" value="crawl">
+    <label>Website URL</label>
+    <input type="url" name="url" placeholder="https://yourbusiness.com">
+    <p class="muted">Stays on the same domain · up to {{ crawl_max_pages }} pages · ~{{ crawl_max_chars }} characters each.</p>
+    <p style="margin-top:12px;"><button class="btn" type="submit">Crawl site</button></p>
+  </form>
+</div>
+
+<div class="card" style="padding:0;">
+  <h2 style="padding:20px 20px 0;">Saved knowledge ({{ chunks|length }})</h2>
+  {% if chunks %}
+  <table>
+    <tr><th>Source</th><th>Type</th><th>Preview</th><th></th></tr>
+    {% for c in chunks %}
+    <tr>
+      <td style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ c.source_label }}</td>
+      <td class="muted">{{ c.source_type }}</td>
+      <td class="muted">{{ c.content[:90] }}{% if c.content|length > 90 %}…{% endif %}</td>
+      <td>
+        <form method="post" style="display:inline;">
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="chunk_id" value="{{ c.id }}">
+          <button class="btn small danger" type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="lead" style="padding:0 20px 20px;">Nothing here yet — add knowledge above so your agent can answer real questions.</p>
+  {% endif %}
+</div>
+{% endblock %}
