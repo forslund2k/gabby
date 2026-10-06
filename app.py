@@ -50,7 +50,7 @@ GABBY_MODEL = os.environ.get("GABBY_MODEL", "gpt-4o-mini")
 GABBY_EMBED_MODEL = os.environ.get("GABBY_EMBED_MODEL", "text-embedding-3-small")
 DEMO_MODE = not GABBY_API_KEY
 
-GABBY_VERSION = "0.18.0"
+GABBY_VERSION = "0.20.0"
 
 CRAWL_MAX_PAGES = 100
 CRAWL_MAX_CHARS = 50000
@@ -627,7 +627,9 @@ def logout():
 def dashboard():
     user = current_user()
     agents = Agent.query.filter_by(user_id=user.id).order_by(Agent.created_at.desc()).all()
-    return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE)
+    base = request.host_url.rstrip("/")
+    snippets = {a.id: f'<script src="{base}/embed/{a.public_key}.js"></script>' for a in agents}
+    return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE, snippets=snippets)
 
 
 
