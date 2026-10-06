@@ -50,7 +50,7 @@ GABBY_MODEL = os.environ.get("GABBY_MODEL", "gpt-4o-mini")
 GABBY_EMBED_MODEL = os.environ.get("GABBY_EMBED_MODEL", "text-embedding-3-small")
 DEMO_MODE = not GABBY_API_KEY
 
-GABBY_VERSION = "0.20.0"
+GABBY_VERSION = "0.21.0"
 
 CRAWL_MAX_PAGES = 100
 CRAWL_MAX_CHARS = 50000
@@ -89,6 +89,20 @@ class Agent(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     chunks = db.relationship("KnowledgeChunk", backref="agent", cascade="all, delete-orphan")
     conversations = db.relationship("Conversation", backref="agent", cascade="all, delete-orphan")
+    leads = db.relationship("Lead", backref="agent", cascade="all, delete-orphan")
+
+
+class Lead(db.Model):
+    """A visitor asked for a callback / to be contacted. Shown in the owner's inbox."""
+    id = db.Column(db.Integer, primary_key=True)
+    agent_id = db.Column(db.Integer, db.ForeignKey("agent.id"), nullable=False)
+    conversation_id = db.Column(db.Integer, db.ForeignKey("conversation.id"), nullable=True)
+    name = db.Column(db.String(120), default="")
+    phone = db.Column(db.String(40), default="")
+    email = db.Column(db.String(120), default="")
+    message = db.Column(db.Text, default="")  # one-line summary of what they wanted
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class KnowledgeChunk(db.Model):
@@ -460,6 +474,9 @@ def build_prompt(agent, chunks, history):
         for c in chunks:
             parts.append(f"- {c.content[:1500]}")
     parts.append(
+        "If the visitor asks for a callback or wants someone from the business to "
+        "reach out to them, warmly collect their name and phone number or email "
+        "address, and confirm you'll pass it along to the team right away. "
         "Answer concisely and helpfully. CRITICAL: never invent specific facts "
         "— hours, prices, addresses, phone numbers, menu items. If the knowledge "
         "above doesn't contain the answer, say you don't know that yet and offer "
@@ -629,7 +646,9 @@ def dashboard():
     agents = Agent.query.filter_by(user_id=user.id).order_by(Agent.created_at.desc()).all()
     base = request.host_url.rstrip("/")
     snippets = {a.id: f'<script src="{base}/embed/{a.public_key}.js"></script>' for a in agents}
-    return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE, snippets=snippets)
+    unread = {a.id: Lead.query.filter_by(agent_id=a.id, is_read=False).count() for a in agents}
+    return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE,
+                           snippets=snippets, unread=unread)
 
 
 
@@ -753,6 +772,16 @@ def agent_edit(agent_id):
         return redirect(url_for("dashboard"))
     snippet = f'<script src="{request.host_url.rstrip("/")}/embed/{agent.public_key}.js"></script>'
     return render_template("agent_form.html", agent=agent, snippet=snippet, timezones=TIMEZONES, suggestions=get_suggestions(agent), hours=get_hours(agent), days=DAYS)
+
+
+@app.route("/agents/<int:agent_id>/leads")
+@login_required
+def agent_leads(agent_id):
+    agent = get_agent_or_404(agent_id, current_user())
+    leads = Lead.query.filter_by(agent_id=agent.id).order_by(Lead.created_at.desc()).all()
+    Lead.query.filter_by(agent_id=agent.id, is_read=False).update({"is_read": True})
+    db.session.commit()
+    return render_template("leads.html", agent=agent, leads=leads)
 
 
 @app.route("/agents/<int:agent_id>/delete", methods=["POST"])
@@ -929,6 +958,80 @@ def chat_page(agent_id):
 # ---------------------------------------------------------------- chat API + widget
 
 
+PHONE_RE = re.compile(r"(\+?1[\s.\-]?)?(\(?\d{3}\)?[\s.\-]?)?\d{3}[\s.\-]\d{4}|\b\d{10}\b")
+EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
+
+
+def _contact_share_signals(user_message, history):
+    """Cheap pre-filter: does this turn look like the visitor sharing contact info?"""
+    if PHONE_RE.search(user_message) or EMAIL_RE.search(user_message):
+        return True
+    if history:
+        last_assistant = next((m.content for m in reversed(history) if m.role == "assistant"), "")
+        asked = any(w in last_assistant.lower() for w in (
+            "phone number", "phone", "email", "call you", "reach you", "contact you",
+            "get back to you"))
+        if asked and len(user_message.strip()) >= 2:
+            return True
+    return False
+
+
+def extract_lead(history):
+    """Pull name/phone/email from recent conversation via the LLM. Returns dict or None."""
+    convo = "\n".join(f"{m.role}: {m.content}" for m in history[-8:])
+    prompt = (
+        "Extract visitor contact info from this chat transcript for a callback request. "
+        'Return ONLY valid JSON like {"name": "...", "phone": "...", "email": "...", '
+        '"message": "..."}. Use empty strings for anything not provided. "message" is a '
+        'one-line summary of what they wanted (e.g. "callback about catering prices"). '
+        "If no contact info was shared, return {}. Transcript:\n" + convo)
+    try:
+        r = requests.post(
+            f"{GABBY_API_BASE}/chat/completions",
+            headers={"Authorization": f"Bearer {GABBY_API_KEY}",
+                     "Content-Type": "application/json"},
+            json={"model": GABBY_MODEL,
+                  "messages": [{"role": "user", "content": prompt}],
+                  "temperature": 0, "max_tokens": 200},
+            timeout=30,
+        )
+        r.raise_for_status()
+        data = json.loads(r.json()["choices"][0]["message"]["content"].strip())
+        if isinstance(data, dict) and (data.get("phone") or data.get("email")):
+            return data
+    except Exception as e:
+        app.logger.warning("Lead extraction failed: %s", e)
+    return None
+
+
+def capture_lead(agent, conv, user_msg_obj, assistant_msg_obj, history):
+    """Create or update a Lead for this conversation if contact info was shared."""
+    try:
+        if DEMO_MODE:
+            return
+        if not _contact_share_signals(user_msg_obj.content, history):
+            return
+        data = extract_lead(history + [user_msg_obj, assistant_msg_obj])
+        if not data:
+            return
+        lead = Lead.query.filter_by(conversation_id=conv.id).first()
+        if not lead:
+            lead = Lead(agent_id=agent.id, conversation_id=conv.id)
+            db.session.add(lead)
+        # Fill in whatever we got; never blank out existing values.
+        if data.get("name"):
+            lead.name = data["name"][:120]
+        if data.get("phone"):
+            lead.phone = data["phone"][:40]
+        if data.get("email"):
+            lead.email = data["email"][:120]
+        if data.get("message"):
+            lead.message = data["message"]
+        lead.is_read = False
+    except Exception as e:
+        app.logger.warning("Lead capture failed: %s", e)
+
+
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     data = request.get_json(force=True, silent=True) or {}
@@ -955,8 +1058,11 @@ def api_chat():
     reply = demo_reply(agent, user_message, chunks) if DEMO_MODE else \
         llm_reply(agent, user_message, history, chunks)
 
-    db.session.add(Message(conversation_id=conv.id, role="user", content=user_message))
-    db.session.add(Message(conversation_id=conv.id, role="assistant", content=reply))
+    user_msg = Message(conversation_id=conv.id, role="user", content=user_message)
+    asst_msg = Message(conversation_id=conv.id, role="assistant", content=reply)
+    db.session.add(user_msg)
+    db.session.add(asst_msg)
+    capture_lead(agent, conv, user_msg, asst_msg, history)
     db.session.commit()
     return jsonify({"reply": reply, "demo_mode": DEMO_MODE,
                     "session_token": conv.session_token,
