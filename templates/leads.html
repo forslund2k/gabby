@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Leads — {{ agent.name }}{% endblock %}
+{% block content %}
+<div class="row" style="justify-content:space-between; margin-bottom:16px;">
+  <div>
+    <h1 style="margin:0;">Leads</h1>
+    <p class="muted" style="margin:4px 0 0;">Visitors who asked {{ agent.name }} for a callback or follow-up.</p>
+  </div>
+  <a class="btn secondary" href="/dashboard">← Dashboard</a>
+</div>
+{% if leads %}
+  <div class="agent-grid">
+    {% for l in leads %}
+    <div class="card lead-card">
+      <div class="row" style="justify-content:space-between; margin-bottom:8px;">
+        <strong style="font-size:17px;">{{ l.name or "Unknown visitor" }}</strong>
+        <span class="muted small">{{ l.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
+      </div>
+      {% if l.phone %}
+      <div class="lead-line"><span class="muted">Phone:</span> <a href="tel:{{ l.phone }}">{{ l.phone }}</a></div>
+      {% endif %}
+      {% if l.email %}
+      <div class="lead-line"><span class="muted">Email:</span> <a href="mailto:{{ l.email }}">{{ l.email }}</a></div>
+      {% endif %}
+      {% if l.message %}
+      <p class="lead-msg">“{{ l.message }}”</p>
+      {% endif %}
+      {% if not l.phone and not l.email %}
+      <p class="muted">No contact details captured yet.</p>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card" style="text-align:center;">
+    <p class="lead">No leads yet. When a visitor asks for a callback, their details will land here.</p>
+  </div>
+{% endif %}
+{% endblock %}
