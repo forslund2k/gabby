@@ -1216,7 +1216,7 @@ def run_migrations():
     for _col in ("lead_allow_call", "lead_allow_sms", "lead_allow_email"):
         if _col not in cols:
             db.session.execute(db.text(
-                f"ALTER TABLE agent ADD COLUMN {_col} BOOLEAN DEFAULT 1"))
+                f"ALTER TABLE agent ADD COLUMN {_col} BOOLEAN DEFAULT TRUE"))
             db.session.commit()
     _lcols = _table_columns("lead")
     if "contact_method" not in _lcols:
