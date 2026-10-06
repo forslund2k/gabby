@@ -358,6 +358,22 @@ code.snippet {
 .embed-code-row { display: flex; gap: 10px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
 .embed-code-row .snippet { flex: 1 1 320px; margin: 0; }
 .embed-code-row .btn { white-space: nowrap; }
+/* Dashboard agent cards */
+.agent-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 18px; margin-top: 6px;
+}
+.agent-card {
+  transition: transform .18s ease, box-shadow .18s ease;
+  border-top: 4px solid var(--teal-600);
+}
+.agent-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.agent-card-top { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
+.agent-avatar { width: 52px; height: 52px; flex: none; }
+.agent-card-id { min-width: 0; }
+.agent-card-name { font-size: 17px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.small { font-size: 12.5px; }
 .muted { color: var(--muted); font-size: 13.5px; }
 .auth-card { max-width: 440px; margin: 30px auto; }
 #chat-log {
