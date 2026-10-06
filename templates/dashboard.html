@@ -11,29 +11,62 @@
   <p><span class="badge live">LIVE</span> <span class="muted">Replies powered by {{ config.get("GABBY_MODEL_HINT", "") }}.</span></p>
 {% endif %}
 {% if agents %}
-  <div class="card" style="padding:0;">
-    <table>
-      <tr><th>Name</th><th>Public key</th><th>Created</th><th></th></tr>
-      {% for a in agents %}
-      <tr>
-        <td><strong>{{ a.name }}</strong></td>
-        <td class="muted">{{ a.public_key[:10] }}…</td>
-        <td class="muted">{{ a.created_at.strftime("%Y-%m-%d") }}</td>
-        <td>
-          <div class="row">
-            <a class="btn small secondary" href="/agents/{{ a.id }}/edit">Edit</a>
-            <a class="btn small secondary" href="/agents/{{ a.id }}/knowledge">Knowledge</a>
-            <a class="btn small secondary" href="/agents/{{ a.id }}/chat">Test chat</a>
-            <form method="post" action="/agents/{{ a.id }}/delete" style="display:inline;"
-                  onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
-              <button class="btn small danger" type="submit">Delete</button>
-            </form>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </table>
+  <div class="agent-grid">
+    {% for a in agents %}
+    <div class="card agent-card">
+      <div class="agent-card-top">
+        <svg viewBox="0 0 48 48" class="agent-avatar" style="--ac: {{ a.color }}" aria-hidden="true">
+          <circle cx="24" cy="25" r="22" fill="var(--ac)" opacity="0.14"/>
+          <line x1="24" y1="15" x2="24" y2="9" stroke="var(--ac)" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="24" cy="7.5" r="2.6" fill="var(--ac)"/>
+          <rect x="9.5" y="21" width="3.4" height="9" rx="1.7" fill="var(--ac)"/>
+          <rect x="35.1" y="21" width="3.4" height="9" rx="1.7" fill="var(--ac)"/>
+          <rect x="12" y="15" width="24" height="21" rx="8.5" fill="var(--ac)"/>
+          <circle cx="18.6" cy="24" r="2.7" fill="#fff"/>
+          <circle cx="29.4" cy="24" r="2.7" fill="#fff"/>
+          <path d="M19 30.2 Q24 34 29 30.2" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="agent-card-id">
+          <strong class="agent-card-name">{{ a.name }}</strong>
+          <div class="muted small">{{ a.public_key[:10] }}… · {{ a.created_at.strftime("%Y-%m-%d") }}</div>
+        </div>
+      </div>
+      <div class="agent-actions">
+        <a class="btn small secondary" href="/agents/{{ a.id }}/edit">Edit</a>
+        <a class="btn small secondary" href="/agents/{{ a.id }}/knowledge">Knowledge</a>
+        <a class="btn small secondary" href="/agents/{{ a.id }}/chat">Test chat</a>
+        <button type="button" class="btn small secondary copy-embed-btn" data-snippet="{{ snippets[a.id] }}">Copy embed</button>
+        <form method="post" action="/agents/{{ a.id }}/delete" style="display:inline;"
+              onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
+          <button class="btn small danger" type="submit">Delete</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
   </div>
+  <script>
+  (function () {
+    document.querySelectorAll(".copy-embed-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var text = btn.getAttribute("data-snippet");
+        function done() {
+          var old = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(function () { btn.textContent = old; }, 2000);
+        }
+        function fallback() {
+          var ta = document.createElement("textarea");
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); } catch (e) {}
+          document.body.removeChild(ta); done();
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, fallback);
+        } else { fallback(); }
+      });
+    });
+  })();
+  </script>
 {% else %}
   <div class="card" style="text-align:center;">
     <p class="lead">No agents yet. Create your first one — it takes about a minute.</p>
