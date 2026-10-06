@@ -191,6 +191,16 @@
     <textarea name="instructions" rows="3" placeholder="e.g. Keep replies short and warm, like a friendly front-desk clerk. Never mention competitors.">{{ agent.instructions }}</textarea>
   </div>
 
+  <div class="card form-section">
+    <h2><span class="step-num">6</span> Lead capture</h2>
+    <p class="lead">When a visitor asks for a callback, how may the team reach them? The agent will only offer the methods you allow.</p>
+    <div class="check-row">
+      <label class="check"><input type="checkbox" name="lead_allow_call" {% if agent.lead_allow_call %}checked{% endif %}> Phone call</label>
+      <label class="check"><input type="checkbox" name="lead_allow_sms" {% if agent.lead_allow_sms %}checked{% endif %}> Text message</label>
+      <label class="check"><input type="checkbox" name="lead_allow_email" {% if agent.lead_allow_email %}checked{% endif %}> Email</label>
+    </div>
+  </div>
+
   <p style="margin:20px 0 32px;">
     <button class="btn btn-lg" type="submit">Save changes</button>
     <a class="btn secondary" href="/dashboard" style="margin-left:8px;">Cancel</a>
