@@ -50,10 +50,10 @@ GABBY_MODEL = os.environ.get("GABBY_MODEL", "gpt-4o-mini")
 GABBY_EMBED_MODEL = os.environ.get("GABBY_EMBED_MODEL", "text-embedding-3-small")
 DEMO_MODE = not GABBY_API_KEY
 
-GABBY_VERSION = "0.16.0"
+GABBY_VERSION = "0.18.0"
 
 CRAWL_MAX_PAGES = 100
-CRAWL_MAX_CHARS = 50000
+CRAWL_MAX_CHARS = 30000
 
 DEFAULT_GREETING = "Hi there! How can I help?"
 
@@ -683,6 +683,13 @@ def _crawl_agent_site(agent_id, url):
                 db.session.commit()
             except Exception:
                 pass
+
+
+@app.route("/agents/<int:agent_id>/crawl-status")
+@login_required
+def agent_crawl_status(agent_id):
+    agent = get_agent_or_404(agent_id, current_user())
+    return jsonify({"status": agent.crawl_status or ""})
 
 
 @app.route("/agents/new", methods=["GET", "POST"])
