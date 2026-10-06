@@ -3,4 +3,4 @@ flask-sqlalchemy
 requests
 beautifulsoup4
 gunicorn
-psycopg[binary}
+psycopg[binary]
