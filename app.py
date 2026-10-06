@@ -50,7 +50,7 @@ GABBY_MODEL = os.environ.get("GABBY_MODEL", "gpt-4o-mini")
 GABBY_EMBED_MODEL = os.environ.get("GABBY_EMBED_MODEL", "text-embedding-3-small")
 DEMO_MODE = not GABBY_API_KEY
 
-GABBY_VERSION = "0.21.0"
+GABBY_VERSION = "0.23.0"
 
 CRAWL_MAX_PAGES = 100
 CRAWL_MAX_CHARS = 50000
@@ -86,6 +86,9 @@ class Agent(db.Model):
     hours_source = db.Column(db.String(20), default="")  # "" | "auto" | "confirmed"
     crawl_status = db.Column(db.String(20), default="")  # "" | "running" | "done" | "failed"
     public_key = db.Column(db.String(32), unique=True, nullable=False)
+    lead_allow_call = db.Column(db.Boolean, default=True)   # owner lets visitors request a phone call
+    lead_allow_sms = db.Column(db.Boolean, default=True)    # ... a text message
+    lead_allow_email = db.Column(db.Boolean, default=True)  # ... an email
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     chunks = db.relationship("KnowledgeChunk", backref="agent", cascade="all, delete-orphan")
     conversations = db.relationship("Conversation", backref="agent", cascade="all, delete-orphan")
@@ -101,6 +104,7 @@ class Lead(db.Model):
     phone = db.Column(db.String(40), default="")
     email = db.Column(db.String(120), default="")
     message = db.Column(db.Text, default="")  # one-line summary of what they wanted
+    contact_method = db.Column(db.String(10), default="")  # "call" | "sms" | "email"
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -128,6 +132,37 @@ class Message(db.Model):
     role = db.Column(db.String(16), nullable=False)  # user | assistant
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+def lead_methods(agent):
+    """Contact methods the owner allows, as (key, label) tuples."""
+    methods = []
+    if getattr(agent, "lead_allow_call", True):
+        methods.append(("call", "a phone call"))
+    if getattr(agent, "lead_allow_sms", True):
+        methods.append(("sms", "a text message"))
+    if getattr(agent, "lead_allow_email", True):
+        methods.append(("email", "email"))
+    return methods
+
+
+def _lead_instruction(agent):
+    methods = lead_methods(agent)
+    if not methods:
+        return ("If the visitor asks to be contacted, politely explain the team "
+                "isn't taking callback requests right now and offer to help another way.")
+    if len(methods) == 1:
+        detail = {"call": "their phone number for a callback",
+                  "sms": "their phone number for a text message",
+                  "email": "their email address"}[methods[0][0]]
+        return ("If the visitor asks to be contacted or wants a callback, warmly ask "
+                f"for their name and {detail}, and confirm you'll pass it along "
+                "to the team right away.")
+    opts = ", ".join(m[1] for m in methods[:-1]) + f", or {methods[-1][1]}"
+    return ("If the visitor asks to be contacted or wants a callback, warmly ask how "
+            f"they'd like to be reached — {opts}. Then collect their name and the "
+            "matching contact detail (phone number for a call or text, email address "
+            "for email), and confirm you'll pass it along to the team right away.")
 
 
 # ---------------------------------------------------------------- helpers
@@ -473,10 +508,8 @@ def build_prompt(agent, chunks, history):
         parts.append("Relevant knowledge from the business (use this to answer):")
         for c in chunks:
             parts.append(f"- {c.content[:1500]}")
+    parts.append(_lead_instruction(agent))
     parts.append(
-        "If the visitor asks for a callback or wants someone from the business to "
-        "reach out to them, warmly collect their name and phone number or email "
-        "address, and confirm you'll pass it along to the team right away. "
         "Answer concisely and helpfully. CRITICAL: never invent specific facts "
         "— hours, prices, addresses, phone numbers, menu items. If the knowledge "
         "above doesn't contain the answer, say you don't know that yet and offer "
@@ -767,6 +800,9 @@ def agent_edit(agent_id):
         hours = parse_hours_form(request.form)
         agent.hours = json.dumps(hours)
         agent.hours_source = "confirmed" if any(hours.values()) else ""
+        agent.lead_allow_call = request.form.get("lead_allow_call") == "on"
+        agent.lead_allow_sms = request.form.get("lead_allow_sms") == "on"
+        agent.lead_allow_email = request.form.get("lead_allow_email") == "on"
         db.session.commit()
         flash("Agent updated.", "ok")
         return redirect(url_for("dashboard"))
@@ -779,9 +815,16 @@ def agent_edit(agent_id):
 def agent_leads(agent_id):
     agent = get_agent_or_404(agent_id, current_user())
     leads = Lead.query.filter_by(agent_id=agent.id).order_by(Lead.created_at.desc()).all()
+    return render_template("leads.html", agent=agent, leads=leads)
+
+
+@app.route("/agents/<int:agent_id>/leads/read", methods=["POST"])
+@login_required
+def agent_leads_read(agent_id):
+    agent = get_agent_or_404(agent_id, current_user())
     Lead.query.filter_by(agent_id=agent.id, is_read=False).update({"is_read": True})
     db.session.commit()
-    return render_template("leads.html", agent=agent, leads=leads)
+    return redirect(url_for("agent_leads", agent_id=agent.id))
 
 
 @app.route("/agents/<int:agent_id>/delete", methods=["POST"])
@@ -982,9 +1025,10 @@ def extract_lead(history):
     prompt = (
         "Extract visitor contact info from this chat transcript for a callback request. "
         'Return ONLY valid JSON like {"name": "...", "phone": "...", "email": "...", '
-        '"message": "..."}. Use empty strings for anything not provided. "message" is a '
-        'one-line summary of what they wanted (e.g. "callback about catering prices"). '
-        "If no contact info was shared, return {}. Transcript:\n" + convo)
+        '"message": "...", "contact_method": "call"}. Use empty strings for anything not '
+        'provided. "message" is a one-line summary of what they wanted (e.g. "callback '
+        'about catering prices"). "contact_method" is "call", "sms", or "email" based on '
+        "what they chose. If no contact info was shared, return {}. Transcript:\n" + convo)
     try:
         r = requests.post(
             f"{GABBY_API_BASE}/chat/completions",
@@ -1005,17 +1049,19 @@ def extract_lead(history):
 
 
 def capture_lead(agent, conv, user_msg_obj, assistant_msg_obj, history):
-    """Create or update a Lead for this conversation if contact info was shared."""
+    """Create or update a Lead for this conversation if contact info was shared.
+    Returns the Lead if newly created (for the new-lead email), else None."""
     try:
         if DEMO_MODE:
-            return
+            return None
         if not _contact_share_signals(user_msg_obj.content, history):
-            return
+            return None
         data = extract_lead(history + [user_msg_obj, assistant_msg_obj])
         if not data:
-            return
+            return None
         lead = Lead.query.filter_by(conversation_id=conv.id).first()
-        if not lead:
+        is_new = lead is None
+        if is_new:
             lead = Lead(agent_id=agent.id, conversation_id=conv.id)
             db.session.add(lead)
         # Fill in whatever we got; never blank out existing values.
@@ -1027,9 +1073,46 @@ def capture_lead(agent, conv, user_msg_obj, assistant_msg_obj, history):
             lead.email = data["email"][:120]
         if data.get("message"):
             lead.message = data["message"]
+        if data.get("contact_method") in ("call", "sms", "email"):
+            lead.contact_method = data["contact_method"]
+        elif data.get("phone"):
+            lead.contact_method = "call"
+        elif data.get("email"):
+            lead.contact_method = "email"
         lead.is_read = False
+        return lead if is_new else None
     except Exception as e:
         app.logger.warning("Lead capture failed: %s", e)
+    return None
+
+
+def send_lead_email(owner_email, agent_name, lead, leads_url):
+    """Email the owner about a new lead via Resend. Skips silently if unconfigured."""
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not api_key or not owner_email:
+        return
+    from_addr = os.environ.get("LEAD_EMAIL_FROM", "Gabby <leads@trygabby.com>").strip()
+    try:
+        requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "from": from_addr,
+                "to": [owner_email],
+                "subject": f"New lead for {agent_name}: {lead['name'] or 'a visitor'}",
+                "text": (
+                    f"You have a new lead from {agent_name}.\n\n"
+                    f"Name: {lead['name'] or '-'}\n"
+                    f"Phone: {lead['phone'] or '-'}\n"
+                    f"Email: {lead['email'] or '-'}\n"
+                    f"Preferred contact: {lead['contact_method'] or '-'}\n"
+                    f"Wanted: {lead['message'] or '-'}\n\n"
+                    f"View all leads: {leads_url}"),
+            },
+            timeout=15,
+        )
+    except Exception as e:
+        app.logger.warning("Lead email failed: %s", e)
 
 
 @app.route("/api/chat", methods=["POST"])
@@ -1062,8 +1145,19 @@ def api_chat():
     asst_msg = Message(conversation_id=conv.id, role="assistant", content=reply)
     db.session.add(user_msg)
     db.session.add(asst_msg)
-    capture_lead(agent, conv, user_msg, asst_msg, history)
+    new_lead = capture_lead(agent, conv, user_msg, asst_msg, history)
+    lead_info = None
+    if new_lead:
+        lead_info = {"name": new_lead.name, "phone": new_lead.phone,
+                     "email": new_lead.email, "message": new_lead.message,
+                     "contact_method": new_lead.contact_method}
     db.session.commit()
+    if lead_info:
+        owner = db.session.get(User, agent.user_id)
+        leads_url = f"{request.host_url.rstrip('/')}/agents/{agent.id}/leads"
+        threading.Thread(target=send_lead_email,
+                         args=(owner.email if owner else "", agent.name, lead_info, leads_url),
+                         daemon=True).start()
     return jsonify({"reply": reply, "demo_mode": DEMO_MODE,
                     "session_token": conv.session_token,
                     "sources": [c.source_label for c in chunks]})
@@ -1118,6 +1212,16 @@ def run_migrations():
     if "crawl_status" not in cols:
         db.session.execute(db.text(
             "ALTER TABLE agent ADD COLUMN crawl_status VARCHAR(20) DEFAULT ''"))
+        db.session.commit()
+    for _col in ("lead_allow_call", "lead_allow_sms", "lead_allow_email"):
+        if _col not in cols:
+            db.session.execute(db.text(
+                f"ALTER TABLE agent ADD COLUMN {_col} BOOLEAN DEFAULT 1"))
+            db.session.commit()
+    _lcols = _table_columns("lead")
+    if "contact_method" not in _lcols:
+        db.session.execute(db.text(
+            "ALTER TABLE lead ADD COLUMN contact_method VARCHAR(10) DEFAULT ''"))
         db.session.commit()
     kcols = _table_columns("knowledge_chunk")
     if "embedding" not in kcols:
