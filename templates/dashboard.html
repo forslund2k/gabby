@@ -35,7 +35,7 @@
         <a class="btn small secondary" href="/agents/{{ a.id }}/edit">Edit</a>
         <a class="btn small secondary" href="/agents/{{ a.id }}/knowledge">Knowledge</a>
         <a class="btn small secondary" href="/agents/{{ a.id }}/chat">Test chat</a>
-        <button type="button" class="btn small secondary copy-embed-btn" data-snippet="{{ snippets[a.id] }}">Copy embed</button>
+        <button type="button" class="btn small secondary copy-embed-btn" data-snippet="{{ snippets[a.id] }}">Copy website code</button>
         <form method="post" action="/agents/{{ a.id }}/delete" style="display:inline;"
               onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
           <button class="btn small danger" type="submit">Delete</button>
