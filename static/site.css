@@ -365,9 +365,12 @@ code.snippet {
 }
 .agent-card {
   transition: transform .18s ease, box-shadow .18s ease;
-  border-top: 4px solid var(--teal-600);
+  border-top: 4px solid var(--ac, var(--teal-600));
 }
 .agent-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.btn-leads-hot { background: var(--amber-bg); color: var(--amber-tx); }
+.btn-leads-hot:hover { background: #fde68a; }
+.btn-leads-hot .lead-badge { background: var(--amber-tx); }
 .agent-card-top { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
 .agent-avatar { width: 52px; height: 52px; flex: none; }
 .agent-card-id { min-width: 0; }
