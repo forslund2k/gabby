@@ -57,6 +57,39 @@
 <!-- EDIT: full 5-step form -->
 <h1 style="margin-bottom:6px;">Edit agent</h1>
 <p class="lead" style="margin-top:0;">Tune how your agent looks, talks, and answers.</p>
+{% if snippet %}
+<div class="card embed-hero">
+  <h2>&#x1F680; Put {{ agent.name }} on your website</h2>
+  <p class="lead">Copy this one line and paste it on your site just before the closing <code>&lt;/body&gt;</code> tag — the chat bubble appears automatically.</p>
+  <div class="embed-code-row">
+    <code class="snippet" id="embed-snippet">{{ snippet }}</code>
+    <button type="button" class="btn" id="copy-embed">Copy code</button>
+  </div>
+  <p class="muted" style="margin:6px 0 0;">Public key: {{ agent.public_key }} &nbsp;·&nbsp; <a href="/agents/{{ agent.id }}/knowledge">Manage knowledge →</a></p>
+</div>
+<script>
+(function () {
+  var btn = document.getElementById("copy-embed");
+  if (!btn) return;
+  btn.addEventListener("click", function () {
+    var text = document.getElementById("embed-snippet").textContent;
+    function done() {
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = "Copy code"; }, 2000);
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta); done();
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+  });
+})();
+</script>
+{% endif %}
 {% if agent.crawl_status == "running" %}
 <div class="flash warning" id="crawl-banner">We're still reading your website — this page will update itself when it's done.</div>
 <script>
@@ -163,16 +196,6 @@
     <a class="btn secondary" href="/dashboard" style="margin-left:8px;">Cancel</a>
   </p>
 </form>
-{% endif %}
-
-{% if agent and snippet %}
-<div class="card">
-  <h2>Embed on your website</h2>
-  <p class="lead">Paste this one line anywhere on the site — the chat bubble appears automatically.</p>
-  <code class="snippet">{{ snippet|safe }}</code>
-  <p class="muted">Public key: {{ agent.public_key }}</p>
-  <p><a class="btn secondary" href="/agents/{{ agent.id }}/knowledge">Manage knowledge →</a></p>
-</div>
 {% endif %}
 
 <script>
