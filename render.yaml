@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: gabby
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gabby-db
+          property: connectionString
+      - key: GABBY_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+databases:
+  - name: gabby-db
+    plan: free

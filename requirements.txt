@@ -1,0 +1,6 @@
+flask
+flask-sqlalchemy
+requests
+beautifulsoup4
+gunicorn
+psycopg2-binary

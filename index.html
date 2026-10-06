@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+{% block title %}Gabby — AI chat agents for small business{% endblock %}
+{% block main_class %}landing{% endblock %}
+{% block head %}
+<style>main.landing { padding: 0; }</style>
+{% endblock %}
+{% block content %}
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <span class="eyebrow">Now in free beta</span>
+      <h1>Your business, <span class="accent">answering customers</span> 24/7.</h1>
+      <p class="sub">Gabby builds an AI chat agent trained on <strong>your</strong> business — your hours, your menu, your services, your FAQs. Paste one snippet on your website and it starts answering customers while you sleep.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-lg" href="/signup">Start free</a>
+        <a class="btn btn-outline btn-lg" href="#how-it-works">See how it works</a>
+      </div>
+      <p class="hero-note">Free during beta &nbsp;·&nbsp; No credit card &nbsp;·&nbsp; Live in about 10 minutes</p>
+    </div>
+    <div>
+      <div class="browser-mock" aria-hidden="true">
+        <div class="browser-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="url-pill">maplestreetbakery.com</span>
+        </div>
+        <div class="site-mock">
+          <div class="shop-name">Maple Street Bakery</div>
+          <div class="shop-tag">Fresh bread daily · Custom cakes · Catering</div>
+          <div class="shop-hero">🍞</div>
+          <div class="skel w80"></div>
+          <div class="skel w60"></div>
+          <div class="widget-mock">
+            <div class="wm-head"><span class="wm-dot"></span> Gabby · Maple Street Bakery</div>
+            <div class="wm-body">
+              <div class="wm-msg user">Do you have gluten-free options?</div>
+              <div class="wm-msg bot">Yes! We bake gluten-free loaves fresh every morning, and our vegan muffins are out by 8am. 🧁</div>
+              <div class="wm-msg user">What time do you close today?</div>
+              <div class="wm-msg bot">We're open until 3pm today. Want me to set aside a loaf for pickup?</div>
+            </div>
+            <div class="wm-input">Ask about hours, menu, orders…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRUST STRIP ============ -->
+<div class="trust-strip">
+  <div class="trust-inner">
+    <div class="trust-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      10-minute setup
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>
+      No code required
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.7 3.8 9S14.5 18.4 12 21c-2.5-2.6-3.8-5.7-3.8-9S9.5 5.6 12 3z"/></svg>
+      Works on any website
+    </div>
+    <div class="trust-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg>
+      You own your data
+    </div>
+  </div>
+</div>
+
+<!-- ============ FEATURES ============ -->
+<section class="section" id="features">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">Features</span>
+      <h2>Everything a small business needs. Nothing it doesn't.</h2>
+      <p>Gabby skips the enterprise bloat. You get a working agent on your site fast — and the tools to keep it sharp.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </div>
+        <h3>Trains on your website</h3>
+        <p>Point Gabby at your site and it reads your pages — hours, services, prices. Or paste text and upload documents. Your agent learns your business, not the generic internet.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg>
+        </div>
+        <h3>One-snippet embed</h3>
+        <p>A friendly chat bubble appears on your site with a single line of code. Works with WordPress, Squarespace, Wix, or a hand-built page — if it runs in a browser, Gabby runs on it.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </div>
+        <h3>Answers 24/7</h3>
+        <p>Nights, weekends, holidays — the questions get answered instantly. No missed "are you open?" messages sitting unread until Monday morning.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 16v-5M12 16V8M18 16v-8"/></svg>
+        </div>
+        <h3>Conversation dashboard</h3>
+        <p>See every chat: what customers asked, what your agent answered, and where it got stuck. Add the missing answer once and it knows it forever.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 019 9h-9V3z"/><circle cx="12" cy="12" r="2.5"/></svg>
+        </div>
+        <h3>Matches your brand</h3>
+        <p>Pick your agent's name, personality, and color. Customers talk to <em>your</em> shop's helper — not a generic robot with someone else's logo.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 01-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 000 4h4v-4h-4z"/></svg>
+        </div>
+        <h3>Honest, simple pricing</h3>
+        <p>Flat monthly plans with unlimited chats — no per-message metering, no surprise bills. Cancel anytime; your data exports with you.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="section alt" id="how-it-works">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">How it works</span>
+      <h2>Live on your site before lunch.</h2>
+      <p>Three steps. If you can describe your business in a paragraph, you can do this.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Create your agent</h3>
+        <p>Give it a name, write a few lines about how it should talk to customers, and pick a color that matches your site.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Teach it your business</h3>
+        <p>Paste text, upload a document, or enter your website address and let Gabby read the pages itself.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Paste one snippet</h3>
+        <p>Copy a single line of code onto your website. The chat bubble appears instantly and starts answering.</p>
+        <code>&lt;script src="trygabby.com/embed/abc123.js"&gt;&lt;/script&gt;</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LIVE DEMO ============ -->
+<section class="section" id="demo">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">Live demo</span>
+      <h2>Don't take our word for it. Ask it something.</h2>
+      <p>This is a sample agent for a fictional bakery, running the same way a real Gabby agent works. Try one of the suggestions — or type your own question.</p>
+    </div>
+    <div class="demo-wrap">
+      <div class="demo-panel">
+        <div class="demo-head">
+          <div class="avatar">G</div>
+          <div class="who">
+            <strong>Gabby · Maple Street Bakery</strong>
+            <span><span class="on"></span> Online — replies instantly</span>
+          </div>
+        </div>
+        <div class="demo-log" id="demo-log">
+          <div class="demo-msg bot">Hi! I'm the Maple Street Bakery helper. Ask me about our hours, menu, or placing an order. 🍞</div>
+        </div>
+        <div class="demo-chips">
+          <button class="demo-chip" data-q="What are your hours?">What are your hours?</button>
+          <button class="demo-chip" data-q="Do you have gluten-free options?">Gluten-free options?</button>
+          <button class="demo-chip" data-q="How do I place an order?">How do I order?</button>
+        </div>
+        <form class="demo-form" id="demo-form">
+          <input id="demo-input" type="text" placeholder="Ask about hours, menu, orders…" autocomplete="off" maxlength="200">
+          <button class="btn" type="submit">Send</button>
+        </form>
+      </div>
+      <p class="demo-note">Sample demo with scripted answers — your own agent learns from <em>your</em> business content.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRICING TEASER ============ -->
+<section class="section alt" id="pricing-teaser">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">Pricing</span>
+      <h2>One flat rate. Unlimited chats.</h2>
+      <p>No per-message metering, no surprise bills. Start free during the beta.</p>
+    </div>
+    <div class="tiers">
+      <div class="tier">
+        <h3>Starter</h3>
+        <div class="price">$49<span class="per">/mo</span></div>
+        <p class="tagline">For a single location getting started.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>1 AI agent, unlimited chats</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Website embed widget</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Email support</li>
+        </ul>
+        <a class="btn btn-outline" href="/signup">Start free</a>
+      </div>
+      <div class="tier pop">
+        <span class="flag">Most popular</span>
+        <h3>Growth</h3>
+        <div class="price">$149<span class="per">/mo</span></div>
+        <p class="tagline">For businesses with more to answer.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>5 AI agents, unlimited chats</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Widgets for every site</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Priority support</li>
+        </ul>
+        <a class="btn" href="/signup">Start free</a>
+      </div>
+      <div class="tier">
+        <h3>Beta</h3>
+        <div class="price">Free</div>
+        <p class="tagline">Help us shape Gabby.</p>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>1 AI agent, unlimited chats</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>All core features</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Direct line to the builders</li>
+        </ul>
+        <a class="btn btn-outline" href="/signup">Join the beta</a>
+      </div>
+    </div>
+    <p class="pricing-note"><a href="/pricing">See full pricing details →</a></p>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section class="section" id="faq">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">FAQ</span>
+      <h2>Questions, answered.</h2>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item">
+        <summary>Do I need technical skills?</summary>
+        <div class="faq-a">No. If you can describe your business in a paragraph, you can launch a Gabby agent. The only "code" involved is pasting one snippet onto your website — and every major site builder (WordPress, Squarespace, Wix) has a spot for that.</div>
+      </details>
+      <details class="faq-item">
+        <summary>What happens when the agent doesn't know an answer?</summary>
+        <div class="faq-a">It says so honestly instead of guessing, and offers to take the customer's details so you can follow up. Every conversation lands in your dashboard, so you can add the missing answer once — then it knows it forever.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Who owns my data?</summary>
+        <div class="faq-a">You do. Your business content, your conversations, your customer messages — all yours. Export or delete everything anytime, no hoops, no retention games.</div>
+      </details>
+      <details class="faq-item">
+        <summary>How much does the AI cost me per chat?</summary>
+        <div class="faq-a">Nothing extra. Starter and Growth include unlimited chats at one flat monthly rate — no per-message metering and no surprise bills at the end of the month.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can I cancel anytime?</summary>
+        <div class="faq-a">Yes. Plans are month-to-month with no contracts and no cancellation fees. Your agent stays live until the end of your billing period, and your data remains exportable afterward.</div>
+      </details>
+      <details class="faq-item">
+        <summary>Can Gabby answer phone calls too?</summary>
+        <div class="faq-a">Not yet — chat is where we started, because it's where most small businesses lose customers after hours. Voice calling is on the roadmap, and beta customers will be first in line when it lands.</div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FINAL CTA ============ -->
+<section class="section">
+  <div class="section-inner">
+    <div class="cta-final">
+      <h2>Stop losing customers after 5pm.</h2>
+      <p>Build your agent in about 10 minutes. It's free during the beta — and your first answered midnight question pays for the whole thing.</p>
+      <a class="btn btn-lg" href="/signup">Create your agent — free</a>
+      <span class="fine">No credit card required · Cancel anytime</span>
+    </div>
+  </div>
+</section>
+
+<script>
+(function () {
+  var log = document.getElementById('demo-log');
+  var form = document.getElementById('demo-form');
+  var input = document.getElementById('demo-input');
+
+  var ANSWERS = [
+    { keys: ['hour', 'open', 'close', 'when'], text: "We're open Monday–Friday 7am–3pm and Saturday 8am–1pm. Closed Sundays — even bakers need a day off. 🥐" },
+    { keys: ['gluten', 'vegan', 'dairy', 'allergy'], text: "Yes! We bake gluten-free loaves fresh every morning, and vegan muffins are out by 8am daily." },
+    { keys: ['order', 'pickup', 'call', 'phone', 'cater'], text: "Easy — call us at (555) 014-2288 and we'll have it ready for pickup. For catering, give us 48 hours notice." },
+    { keys: ['price', 'cost', 'much', 'cake'], text: "Most loaves run $6–$9. Custom cakes start at $40 — tell us the occasion and we'll sketch something up." },
+    { keys: ['where', 'location', 'address', 'find'], text: "You'll find us at 123 Maple Street, right next to the library. Look for the smell of fresh bread. 🍞" },
+    { keys: ['menu', 'sell', 'bread', 'pastry', 'muffin'], text: "Sourdough, rye, and baguettes daily — plus croissants, muffins, and a rotating seasonal pastry. The almond croissant has a small local fan club." }
+  ];
+  var FALLBACK = "Great question — in the full version I'd be trained on the bakery's real answers. Try asking about hours, prices, or ordering!";
+
+  function addMsg(text, who) {
+    var d = document.createElement('div');
+    d.className = 'demo-msg ' + who;
+    d.textContent = text;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+    return d;
+  }
+  function answer(q) {
+    var lower = q.toLowerCase();
+    for (var i = 0; i < ANSWERS.length; i++) {
+      for (var j = 0; j < ANSWERS[i].keys.length; j++) {
+        if (lower.indexOf(ANSWERS[i].keys[j]) !== -1) return ANSWERS[i].text;
+      }
+    }
+    return FALLBACK;
+  }
+  function send(text) {
+    text = text.trim();
+    if (!text) return;
+    addMsg(text, 'user');
+    input.value = '';
+    var t = document.createElement('div');
+    t.className = 'demo-msg bot typing';
+    t.innerHTML = '<span></span><span></span><span></span>';
+    log.appendChild(t);
+    log.scrollTop = log.scrollHeight;
+    setTimeout(function () {
+      t.remove();
+      addMsg(answer(text), 'bot');
+    }, 900);
+  }
+  form.addEventListener('submit', function (e) { e.preventDefault(); send(input.value); });
+  document.querySelectorAll('.demo-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () { send(chip.getAttribute('data-q')); });
+  });
+})();
+</script>
+{% endblock %}
