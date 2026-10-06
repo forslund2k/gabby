@@ -105,6 +105,7 @@ class Lead(db.Model):
     email = db.Column(db.String(120), default="")
     message = db.Column(db.Text, default="")  # one-line summary of what they wanted
     contact_method = db.Column(db.String(10), default="")  # "call" | "sms" | "email"
+    sms_consent = db.Column(db.Boolean, default=False)  # visitor agreed to receive texts
     is_read = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -166,7 +167,9 @@ def _lead_instruction(agent):
             "After that, if they haven't shared one of the other allowed methods, "
             "offer it once as a backup — e.g. 'Want to add an email too, in case we "
             "can't reach you at that number?' If they decline, thank them and move on; "
-            "never ask twice.")
+            "never ask twice. If they gave a phone number for a call (not a text) and "
+            "texting is an allowed method, ask once whether it's also okay to text them "
+            "at that number.")
 
 
 # ---------------------------------------------------------------- helpers
@@ -1029,10 +1032,12 @@ def extract_lead(history):
     prompt = (
         "Extract visitor contact info from this chat transcript for a callback request. "
         'Return ONLY valid JSON like {"name": "...", "phone": "...", "email": "...", '
-        '"message": "...", "contact_method": "call"}. Use empty strings for anything not '
-        'provided. "message" is a one-line summary of what they wanted (e.g. "callback '
-        'about catering prices"). "contact_method" is "call", "sms", or "email" based on '
-        "what they chose. If no contact info was shared, return {}. Transcript:\n" + convo)
+        '"message": "...", "contact_method": "call", "sms_consent": true}. Use empty '
+        'strings for anything not provided. "message" is a one-line summary of what they '
+        'wanted (e.g. "callback about catering prices"). "contact_method" is "call", '
+        '"sms", or "email" based on what they chose. "sms_consent" is true only if they '
+        "agreed to receive text messages. If no contact info was shared, return {}. "
+        "Transcript:\n" + convo)
     try:
         r = requests.post(
             f"{GABBY_API_BASE}/chat/completions",
@@ -1079,6 +1084,8 @@ def capture_lead(agent, conv, user_msg_obj, assistant_msg_obj, history):
             lead.message = data["message"]
         if data.get("contact_method") in ("call", "sms", "email"):
             lead.contact_method = data["contact_method"]
+        if data.get("sms_consent") is True:
+            lead.sms_consent = True
         elif data.get("phone"):
             lead.contact_method = "call"
         elif data.get("email"):
@@ -1110,6 +1117,7 @@ def send_lead_email(owner_email, agent_name, lead, leads_url):
                     f"Phone: {lead['phone'] or '-'}\n"
                     f"Email: {lead['email'] or '-'}\n"
                     f"Preferred contact: {lead['contact_method'] or '-'}\n"
+                    f"OK to text: {'yes' if lead['sms_consent'] or lead['contact_method'] == 'sms' else 'no'}\n"
                     f"Wanted: {lead['message'] or '-'}\n\n"
                     f"View all leads: {leads_url}"),
             },
@@ -1154,7 +1162,8 @@ def api_chat():
     if new_lead:
         lead_info = {"name": new_lead.name, "phone": new_lead.phone,
                      "email": new_lead.email, "message": new_lead.message,
-                     "contact_method": new_lead.contact_method}
+                     "contact_method": new_lead.contact_method,
+                     "sms_consent": new_lead.sms_consent}
     db.session.commit()
     if lead_info:
         owner = db.session.get(User, agent.user_id)
@@ -1226,6 +1235,10 @@ def run_migrations():
     if "contact_method" not in _lcols:
         db.session.execute(db.text(
             "ALTER TABLE lead ADD COLUMN contact_method VARCHAR(10) DEFAULT ''"))
+        db.session.commit()
+    if "sms_consent" not in _lcols:
+        db.session.execute(db.text(
+            "ALTER TABLE lead ADD COLUMN sms_consent BOOLEAN DEFAULT FALSE"))
         db.session.commit()
     kcols = _table_columns("knowledge_chunk")
     if "embedding" not in kcols:
