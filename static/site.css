@@ -381,6 +381,11 @@ code.snippet {
   background: var(--teal-600); color: #fff; margin-left: 4px; vertical-align: 1px;
 }
 .lead-card { border-left: 4px solid var(--teal-600); }
+.lead-card--new {
+  background: linear-gradient(135deg, var(--teal-50) 0%, var(--white) 80%);
+  border-left-color: var(--teal-500);
+  box-shadow: var(--shadow-md);
+}
 .lead-line { margin: 4px 0; }
 .lead-msg { margin: 10px 0 0; font-style: italic; color: var(--slate); }
 .muted { color: var(--muted); font-size: 13.5px; }
