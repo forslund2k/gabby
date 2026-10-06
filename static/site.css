@@ -347,6 +347,17 @@ code.snippet {
   border-radius: var(--radius-sm); font-size: 13px; overflow-x: auto; margin: 10px 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+/* Embed hero — the money action on the edit page */
+.embed-hero {
+  border: 2px solid var(--teal-600);
+  background: linear-gradient(135deg, var(--teal-50) 0%, var(--white) 75%);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+}
+.embed-hero h2 { margin-top: 0; color: var(--teal-700); }
+.embed-code-row { display: flex; gap: 10px; align-items: center; margin: 12px 0; flex-wrap: wrap; }
+.embed-code-row .snippet { flex: 1 1 320px; margin: 0; }
+.embed-code-row .btn { white-space: nowrap; }
 .muted { color: var(--muted); font-size: 13.5px; }
 .auth-card { max-width: 440px; margin: 30px auto; }
 #chat-log {
