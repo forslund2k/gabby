@@ -24,6 +24,7 @@
         <span class="row" style="gap:8px;">
           {% if not l.is_read %}<span class="badge live">NEW</span>{% endif %}
           {% if l.contact_method %}<span class="badge">{{ l.contact_method }}</span>{% endif %}
+          {% if l.sms_consent or l.contact_method == "sms" %}<span class="badge live">OK to text</span>{% endif %}
           <span class="muted small">{{ l.created_at.strftime("%Y-%m-%d %H:%M") }}</span>
         </span>
       </div>
