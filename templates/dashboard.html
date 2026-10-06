@@ -13,7 +13,7 @@
 {% if agents %}
   <div class="agent-grid">
     {% for a in agents %}
-    <div class="card agent-card">
+    <div class="card agent-card" style="--ac: {{ a.color }}">
       <div class="agent-card-top">
         <svg viewBox="0 0 48 48" class="agent-avatar" style="--ac: {{ a.color }}" aria-hidden="true">
           <circle cx="24" cy="25" r="22" fill="var(--ac)" opacity="0.14"/>
@@ -32,14 +32,14 @@
         </div>
       </div>
       <div class="agent-actions">
-        <a class="btn small secondary" href="/agents/{{ a.id }}/edit">Edit</a>
-        <a class="btn small secondary" href="/agents/{{ a.id }}/knowledge">Knowledge</a>
-        <a class="btn small secondary" href="/agents/{{ a.id }}/chat">Test chat</a>
-        <button type="button" class="btn small secondary copy-embed-btn" data-snippet="{{ snippets[a.id] }}">Copy website code</button>
-        <a class="btn small secondary" href="/agents/{{ a.id }}/leads">Leads{% if unread[a.id] %} <span class="lead-badge">{{ unread[a.id] }}</span>{% endif %}</a>
+        <a class="btn small secondary" href="/agents/{{ a.id }}/edit">✏️ Edit</a>
+        <a class="btn small secondary" href="/agents/{{ a.id }}/knowledge">📚 Knowledge</a>
+        <a class="btn small" href="/agents/{{ a.id }}/chat">💬 Test chat</a>
+        <button type="button" class="btn small secondary copy-embed-btn" data-snippet="{{ snippets[a.id] }}">🔗 Copy website code</button>
+        <a class="btn small secondary{% if unread[a.id] %} btn-leads-hot{% endif %}" href="/agents/{{ a.id }}/leads">📥 Leads{% if unread[a.id] %} <span class="lead-badge">{{ unread[a.id] }}</span>{% endif %}</a>
         <form method="post" action="/agents/{{ a.id }}/delete" style="display:inline;"
               onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
-          <button class="btn small danger" type="submit">Delete</button>
+          <button class="btn small danger" type="submit">🗑️ Delete</button>
         </form>
       </div>
     </div>
