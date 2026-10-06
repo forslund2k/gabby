@@ -162,7 +162,11 @@ def _lead_instruction(agent):
     return ("If the visitor asks to be contacted or wants a callback, warmly ask how "
             f"they'd like to be reached — {opts}. Then collect their name and the "
             "matching contact detail (phone number for a call or text, email address "
-            "for email), and confirm you'll pass it along to the team right away.")
+            "for email), and confirm you'll pass it along to the team right away. "
+            "After that, if they haven't shared one of the other allowed methods, "
+            "offer it once as a backup — e.g. 'Want to add an email too, in case we "
+            "can't reach you at that number?' If they decline, thank them and move on; "
+            "never ask twice.")
 
 
 # ---------------------------------------------------------------- helpers
