@@ -1026,6 +1026,27 @@ def _contact_share_signals(user_message, history):
     return False
 
 
+def _parse_lead_json(text):
+    """Parse the extraction model's reply, tolerating markdown code fences."""
+    text = text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    try:
+        data = json.loads(text)
+        return data if isinstance(data, dict) else None
+    except Exception:
+        pass
+    m = re.search(r"\{.*\}", text, re.DOTALL)
+    if m:
+        try:
+            data = json.loads(m.group(0))
+            return data if isinstance(data, dict) else None
+        except Exception:
+            pass
+    return None
+
+
 def extract_lead(history):
     """Pull name/phone/email from recent conversation via the LLM. Returns dict or None."""
     convo = "\n".join(f"{m.role}: {m.content}" for m in history[-8:])
@@ -1049,8 +1070,8 @@ def extract_lead(history):
             timeout=30,
         )
         r.raise_for_status()
-        data = json.loads(r.json()["choices"][0]["message"]["content"].strip())
-        if isinstance(data, dict) and (data.get("phone") or data.get("email")):
+        data = _parse_lead_json(r.json()["choices"][0]["message"]["content"])
+        if data and (data.get("phone") or data.get("email")):
             return data
     except Exception as e:
         app.logger.warning("Lead extraction failed: %s", e)
