@@ -1120,10 +1120,79 @@ def capture_lead(agent, conv, user_msg_obj, assistant_msg_obj, history):
 
 def send_lead_email(owner_email, agent_name, lead, leads_url):
     """Email the owner about a new lead via Resend. Skips silently if unconfigured."""
+    import html as _html
     api_key = os.environ.get("RESEND_API_KEY", "").strip()
     if not api_key or not owner_email:
         return
-    from_addr = os.environ.get("LEAD_EMAIL_FROM", "Gabby <leads@trygabby.com>").strip()
+    from_addr = os.environ.get("LEAD_EMAIL_FROM", "TryGabby <leads@trygabby.com>").strip()
+
+    def esc(v):
+        return _html.escape(str(v or "-"))
+
+    name = esc(lead["name"])
+    phone = esc(lead["phone"])
+    email = esc(lead["email"])
+    contact = esc(lead["contact_method"])
+    ok_text = "Yes" if (lead["sms_consent"] or lead["contact_method"] == "sms") else "No"
+    wanted = esc(lead["message"])
+    agent_safe = esc(agent_name)
+
+    phone_row = phone
+    if lead["phone"]:
+        phone_row = f'<a href="tel:{_html.escape(lead["phone"])}" style="color:#0d9488;font-weight:700;text-decoration:none;">{phone}</a>'
+    email_row = email
+    if lead["email"]:
+        email_row = f'<a href="mailto:{_html.escape(lead["email"])}" style="color:#0d9488;text-decoration:none;">{email}</a>'
+
+    html_body = f"""\
+<div style="background:#f1f5f9;padding:24px 12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,0.08);">
+    <div style="background:#0d9488;padding:20px 24px;">
+      <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:0.5px;">Try<span style="opacity:0.85;">Gabby</span></div>
+      <div style="color:#ccfbf1;font-size:13px;margin-top:4px;">New lead for {agent_safe}</div>
+    </div>
+    <div style="padding:24px;">
+      <div style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+        <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;">Name</div>
+          <div style="font-size:18px;font-weight:700;color:#0f172a;margin-top:2px;">{name}</div>
+        </div>
+        <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;">Phone</div>
+          <div style="font-size:16px;color:#0f172a;margin-top:2px;">{phone_row}</div>
+        </div>
+        <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;">Email</div>
+          <div style="font-size:16px;color:#0f172a;margin-top:2px;">{email_row}</div>
+        </div>
+        <div style="padding:14px 18px;border-bottom:1px solid #f1f5f9;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;">Preferred contact</div>
+          <div style="font-size:16px;color:#0f172a;margin-top:2px;">{contact} &nbsp;·&nbsp; OK to text: {ok_text}</div>
+        </div>
+        <div style="padding:14px 18px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;">Wanted</div>
+          <div style="font-size:16px;color:#0f172a;margin-top:2px;">{wanted}</div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:22px;">
+        <a href="{_html.escape(leads_url)}" style="display:inline-block;background:#0d9488;color:#ffffff;font-weight:700;font-size:16px;padding:13px 34px;border-radius:10px;text-decoration:none;">View all leads</a>
+      </div>
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #f1f5f9;text-align:center;">
+      <div style="font-size:12px;color:#94a3b8;">Sent by TryGabby — your AI chat agent</div>
+    </div>
+  </div>
+</div>"""
+
+    text_body = (
+        f"You have a new lead from {agent_name}.\n\n"
+        f"Name: {lead['name'] or '-'}\n"
+        f"Phone: {lead['phone'] or '-'}\n"
+        f"Email: {lead['email'] or '-'}\n"
+        f"Preferred contact: {lead['contact_method'] or '-'}\n"
+        f"OK to text: {'yes' if lead['sms_consent'] or lead['contact_method'] == 'sms' else 'no'}\n"
+        f"Wanted: {lead['message'] or '-'}\n\n"
+        f"View all leads: {leads_url}")
     try:
         requests.post(
             "https://api.resend.com/emails",
@@ -1132,15 +1201,8 @@ def send_lead_email(owner_email, agent_name, lead, leads_url):
                 "from": from_addr,
                 "to": [owner_email],
                 "subject": f"New lead for {agent_name}: {lead['name'] or 'a visitor'}",
-                "text": (
-                    f"You have a new lead from {agent_name}.\n\n"
-                    f"Name: {lead['name'] or '-'}\n"
-                    f"Phone: {lead['phone'] or '-'}\n"
-                    f"Email: {lead['email'] or '-'}\n"
-                    f"Preferred contact: {lead['contact_method'] or '-'}\n"
-                    f"OK to text: {'yes' if lead['sms_consent'] or lead['contact_method'] == 'sms' else 'no'}\n"
-                    f"Wanted: {lead['message'] or '-'}\n\n"
-                    f"View all leads: {leads_url}"),
+                "html": html_body,
+                "text": text_body,
             },
             timeout=15,
         )
