@@ -58,7 +58,35 @@
 <h1 style="margin-bottom:6px;">Edit agent</h1>
 <p class="lead" style="margin-top:0;">Tune how your agent looks, talks, and answers.</p>
 {% if agent.crawl_status == "running" %}
-<div class="flash warning">We're still reading your website — knowledge, hours, and conversation starters will appear here when it's done. Refresh in a bit.</div>
+<div class="flash warning" id="crawl-banner">We're still reading your website — this page will update itself when it's done.</div>
+<script>
+(function () {
+  var banner = document.getElementById("crawl-banner");
+  var form = document.querySelector('form[method="post"]');
+  var dirty = false;
+  if (form) {
+    form.addEventListener("input", function () { dirty = true; });
+    form.addEventListener("change", function () { dirty = true; });
+  }
+  var timer = setInterval(function () {
+    fetch("{{ url_for('agent_crawl_status', agent_id=agent.id) }}", {credentials: "same-origin"})
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.status && data.status !== "running") {
+          clearInterval(timer);
+          if (dirty) {
+            // Don't wipe unsaved edits — just tell them to refresh.
+            banner.className = "flash ok";
+            banner.textContent = "Your website finished crawling — refresh the page to see the new hours and suggestions.";
+          } else {
+            location.reload();
+          }
+        }
+      })
+      .catch(function () { /* try again next poll */ });
+  }, 15000);
+})();
+</script>
 {% elif agent.crawl_status == "failed" %}
 <div class="flash error">We couldn't read your website. Check the URL on the Knowledge page and try crawling again.</div>
 {% endif %}
@@ -121,7 +149,7 @@
   <div class="card form-section">
     <h2><span class="step-num">4</span> Conversation starters</h2>
     <label>Suggested questions <span class="muted">— up to 4, shown as tappable chips</span></label>
-    <textarea name="suggestions" rows="4" placeholder="What are your hours?&#10;Do you have gluten-free options?&#10;How do I place an order?">{{ '\n'.join(suggestions) }}</textarea>
+    <textarea name="suggestions" rows="4" placeholder="What are your hours?&#10;Where are you located?&#10;How can I contact you?">{{ '\n'.join(suggestions) }}</textarea>
   </div>
 
   <div class="card form-section">
