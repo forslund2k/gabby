@@ -388,6 +388,10 @@ code.snippet {
 }
 .lead-line { margin: 4px 0; }
 .lead-msg { margin: 10px 0 0; font-style: italic; color: var(--slate); }
+/* Lead capture settings */
+.check-row { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 6px; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+.check input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--teal-600); cursor: pointer; }
 .muted { color: var(--muted); font-size: 13.5px; }
 .auth-card { max-width: 440px; margin: 30px auto; }
 #chat-log {
