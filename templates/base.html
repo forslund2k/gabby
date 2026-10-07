@@ -14,17 +14,34 @@
 </head>
 <body>
 {% if session.get("user_id") %}
-<header class="app-header">
-  <div class="app-nav-inner">
-    <a class="brand" href="/dashboard" aria-label="TryGabby dashboard">
-      <span class="brand-badge sm"><img class="brand-logo" src="{{ url_for('static', filename='trygabby-logo-v2.jpg') }}" alt="TryGabby"></span>
+<header class="site-header">
+  <div class="nav-inner">
+    <a class="brand" href="/" aria-label="TryGabby home">
+      <img class="brand-logo" src="{{ url_for('static', filename='trygabby-logo-v2.jpg') }}" alt="TryGabby">
     </a>
-    <nav class="app-tabs" aria-label="Account">
-      <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Agents</a>
+    <nav class="nav-links nav-app-links">
+      <a href="/dashboard">Agents</a>
+      <a href="/#features">Features</a>
+      <a href="/#how-it-works">How it works</a>
+      <a href="/#demo">Live demo</a>
+      <a href="/pricing">Pricing</a>
     </nav>
-    <div class="app-nav-cta">
-      <a class="app-support" href="/support">Contact support</a>
+    <div class="nav-cta">
+      <a class="nav-link" href="/support">Contact support</a>
       <a class="btn btn-sm" href="/agents/new">+ New agent</a>
+      <a class="nav-link" href="/logout">Log out</a>
+    </div>
+    <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Open menu" aria-expanded="false">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="/dashboard">Agents</a>
+      <a href="/#features">Features</a>
+      <a href="/#how-it-works">How it works</a>
+      <a href="/#demo">Live demo</a>
+      <a href="/pricing">Pricing</a>
+      <div class="nav-menu-sep"></div>
+      <a href="/support">Contact support</a>
+      <a href="/agents/new" class="nav-menu-cta">+ New agent</a>
+      <a href="/logout">Log out</a>
     </div>
   </div>
 </header>
