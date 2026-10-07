@@ -51,6 +51,21 @@
         <a class="btn btn-sm" href="/signup">Get started</a>
       {% endif %}
     </div>
+    <button class="nav-menu-btn" id="nav-menu-btn" aria-label="Open menu" aria-expanded="false">☰</button>
+    <div class="nav-menu" id="nav-menu">
+      <a href="/#features">Features</a>
+      <a href="/#how-it-works">How it works</a>
+      <a href="/#demo">Live demo</a>
+      <a href="/pricing">Pricing</a>
+      <div class="nav-menu-sep"></div>
+      {% if session.get("user_id") %}
+        <a href="/dashboard">Dashboard</a>
+        <a href="/logout">Log out</a>
+      {% else %}
+        <a href="/login">Log in</a>
+        <a href="/signup" class="nav-menu-cta">Get started</a>
+      {% endif %}
+    </div>
   </div>
 </header>
 
