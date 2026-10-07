@@ -1,5 +1,7 @@
 # About TryGabby
 
+TryGabby's theme: "Make every customer feel like your only customer."
+
 TryGabby builds AI chat agents for businesses of every size — from solo shops to large companies. Every business gets the same attentive support. A TryGabby agent lives on your website and answers customer questions 24/7, even when you're closed or busy.
 
 ## How it works
