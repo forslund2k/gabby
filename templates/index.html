@@ -23,23 +23,23 @@
       <div class="browser-mock" aria-hidden="true">
         <div class="browser-bar">
           <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-          <span class="url-pill">maplestreetbakery.com</span>
+          <span class="url-pill">yourbusiness.com</span>
         </div>
         <div class="site-mock">
-          <div class="shop-name">Maple Street Bakery</div>
-          <div class="shop-tag">Fresh bread daily · Custom cakes · Catering</div>
-          <div class="shop-hero">🍞</div>
+          <div class="shop-name">Your Business</div>
+          <div class="shop-tag">Your products · Your services · Your hours</div>
+          <div class="shop-hero">💬</div>
           <div class="skel w80"></div>
           <div class="skel w60"></div>
           <div class="widget-mock">
-            <div class="wm-head"><span class="wm-dot"></span> Gabby · Maple Street Bakery</div>
+            <div class="wm-head"><span class="wm-dot"></span> TryGabby · Your Business</div>
             <div class="wm-body">
-              <div class="wm-msg user">Do you have gluten-free options?</div>
-              <div class="wm-msg bot">Yes! We bake gluten-free loaves fresh every morning, and our vegan muffins are out by 8am. 🧁</div>
-              <div class="wm-msg user">What time do you close today?</div>
-              <div class="wm-msg bot">We're open until 3pm today. Want me to set aside a loaf for pickup?</div>
+              <div class="wm-msg user">Are you open on Saturdays?</div>
+              <div class="wm-msg bot">Yes — Saturdays 10am to 4pm. Can I help with anything else?</div>
+              <div class="wm-msg user">Can someone call me about an order?</div>
+              <div class="wm-msg bot">Absolutely — what's the best number to reach you?</div>
             </div>
-            <div class="wm-input">Ask about hours, menu, orders…</div>
+            <div class="wm-input">Ask a question…</div>
           </div>
         </div>
       </div>
@@ -159,31 +159,31 @@
     <div class="section-head">
       <span class="eyebrow">Live demo</span>
       <h2>Don't take our word for it. Ask it something.</h2>
-      <p>This is a sample agent for a fictional bakery, running the same way a real Gabby agent works. Try one of the suggestions — or type your own question.</p>
+      <p>This is a real TryGabby agent, trained on our own site. Ask it about pricing, features, or how it works — your agent will answer from <em>your</em> business content the same way.</p>
     </div>
     <div class="demo-wrap">
       <div class="demo-panel">
         <div class="demo-head">
           <div class="avatar">G</div>
           <div class="who">
-            <strong>Gabby · Maple Street Bakery</strong>
+            <strong>TryGabby Assistant</strong>
             <span><span class="on"></span> Online — replies instantly</span>
           </div>
         </div>
         <div class="demo-log" id="demo-log">
-          <div class="demo-msg bot">Hi! I'm the Maple Street Bakery helper. Ask me about our hours, menu, or placing an order. 🍞</div>
+          <div class="demo-msg bot">Hi! I'm the TryGabby assistant. Ask me about pricing, features, or how it works.</div>
         </div>
         <div class="demo-chips">
-          <button class="demo-chip" data-q="What are your hours?">What are your hours?</button>
-          <button class="demo-chip" data-q="Do you have gluten-free options?">Gluten-free options?</button>
-          <button class="demo-chip" data-q="How do I place an order?">How do I order?</button>
+          <button class="demo-chip" data-q="How much does TryGabby cost?">How much does it cost?</button>
+          <button class="demo-chip" data-q="How does it work?">How does it work?</button>
+          <button class="demo-chip" data-q="Will it capture leads for my business?">Will it capture leads?</button>
         </div>
         <form class="demo-form" id="demo-form">
-          <input id="demo-input" type="text" placeholder="Ask about hours, menu, orders…" autocomplete="off" maxlength="200">
+          <input id="demo-input" type="text" placeholder="Ask about pricing, features…" autocomplete="off" maxlength="200">
           <button class="btn" type="submit">Send</button>
         </form>
       </div>
-      <p class="demo-note">Sample demo with scripted answers — your own agent learns from <em>your</em> business content.</p>
+      <p class="demo-note">Live demo running on a real TryGabby agent — the same tech your business would get.</p>
     </div>
   </div>
 </section>
@@ -289,16 +289,8 @@
   var log = document.getElementById('demo-log');
   var form = document.getElementById('demo-form');
   var input = document.getElementById('demo-input');
-
-  var ANSWERS = [
-    { keys: ['hour', 'open', 'close', 'when'], text: "We're open Monday–Friday 7am–3pm and Saturday 8am–1pm. Closed Sundays — even bakers need a day off. 🥐" },
-    { keys: ['gluten', 'vegan', 'dairy', 'allergy'], text: "Yes! We bake gluten-free loaves fresh every morning, and vegan muffins are out by 8am daily." },
-    { keys: ['order', 'pickup', 'call', 'phone', 'cater'], text: "Easy — call us at (555) 014-2288 and we'll have it ready for pickup. For catering, give us 48 hours notice." },
-    { keys: ['price', 'cost', 'much', 'cake'], text: "Most loaves run $6–$9. Custom cakes start at $40 — tell us the occasion and we'll sketch something up." },
-    { keys: ['where', 'location', 'address', 'find'], text: "You'll find us at 123 Maple Street, right next to the library. Look for the smell of fresh bread. 🍞" },
-    { keys: ['menu', 'sell', 'bread', 'pastry', 'muffin'], text: "Sourdough, rye, and baguettes daily — plus croissants, muffins, and a rotating seasonal pastry. The almond croissant has a small local fan club." }
-  ];
-  var FALLBACK = "Great question — in the full version I'd be trained on the bakery's real answers. Try asking about hours, prices, or ordering!";
+  var PUBLIC_KEY = {{ site_agent_key|tojson }};
+  var sessionToken = null;
 
   function addMsg(text, who) {
     var d = document.createElement('div');
@@ -307,15 +299,6 @@
     log.appendChild(d);
     log.scrollTop = log.scrollHeight;
     return d;
-  }
-  function answer(q) {
-    var lower = q.toLowerCase();
-    for (var i = 0; i < ANSWERS.length; i++) {
-      for (var j = 0; j < ANSWERS[i].keys.length; j++) {
-        if (lower.indexOf(ANSWERS[i].keys[j]) !== -1) return ANSWERS[i].text;
-      }
-    }
-    return FALLBACK;
   }
   function send(text) {
     text = text.trim();
@@ -327,10 +310,18 @@
     t.innerHTML = '<span></span><span></span><span></span>';
     log.appendChild(t);
     log.scrollTop = log.scrollHeight;
-    setTimeout(function () {
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ public_key: PUBLIC_KEY, message: text, session_token: sessionToken })
+    }).then(function (r) { return r.json(); }).then(function (data) {
       t.remove();
-      addMsg(answer(text), 'bot');
-    }, 900);
+      if (data.session_token) sessionToken = data.session_token;
+      addMsg(data.reply || "Hmm, I didn't catch that \u2014 try asking about pricing or features.", 'bot');
+    }).catch(function () {
+      t.remove();
+      addMsg("Sorry, I'm having trouble reaching the server. Please try again in a moment.", 'bot');
+    });
   }
   form.addEventListener('submit', function (e) { e.preventDefault(); send(input.value); });
   document.querySelectorAll('.demo-chip').forEach(function (chip) {
@@ -338,4 +329,5 @@
   });
 })();
 </script>
+<script src="/embed/{{ site_agent_key }}.js"></script>
 {% endblock %}
