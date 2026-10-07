@@ -484,3 +484,128 @@ code.snippet {
 @keyframes spin{to{transform:rotate(360deg);}}
 
 .flash.warning { background: var(--amber-bg); color: var(--amber-tx); }
+
+/* ============================================================
+   App header (logged-in) + dashboard rework
+   ============================================================ */
+.app-header { background: var(--ink); }
+.app-nav-inner {
+  max-width: 1180px; margin: 0 auto; padding: 12px 22px;
+  display: flex; align-items: center; gap: 26px;
+}
+.brand-badge.sm { padding: 6px 12px; border-radius: 10px; }
+.brand-badge.sm .brand-logo { height: 32px; }
+.app-tabs { display: flex; gap: 4px; }
+.app-tabs a {
+  color: #94a3b8; font-weight: 600; font-size: 15px;
+  padding: 8px 14px 6px; border-bottom: 3px solid transparent;
+}
+.app-tabs a:hover { color: #e2e8f0; }
+.app-tabs a.active { color: #fff; border-bottom-color: var(--teal-500); }
+.app-nav-cta { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.app-support {
+  color: #cbd5e1; border: 1px solid #334155; border-radius: 10px;
+  padding: 8px 16px; font-size: 14px; font-weight: 600; white-space: nowrap;
+}
+.app-support:hover { color: #fff; border-color: #64748b; }
+
+/* Dashboard layout */
+.dash-head h1 { margin: 0 0 4px; }
+.dash-head { margin-bottom: 20px; }
+.dash-grid {
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px; align-items: start;
+}
+.dash-side { position: sticky; top: 24px; }
+.side-panel { text-align: center; padding: 32px 24px; }
+.side-panel h3 { margin: 14px 0 8px; }
+.side-panel .btn { margin-top: 12px; }
+.side-ava {
+  width: 72px; height: 72px; margin: 0 auto; border-radius: 50%;
+  background: var(--teal-50); display: flex; align-items: center; justify-content: center;
+}
+.side-ava svg { width: 44px; height: 44px; }
+
+/* Agent card */
+.acard {
+  background: var(--white); border-radius: 20px;
+  box-shadow: var(--shadow-md); padding: 26px; margin-bottom: 24px;
+  position: relative; overflow: hidden;
+}
+.acard-top { display: flex; gap: 18px; align-items: flex-start; }
+.acard-ava {
+  width: 84px; height: 84px; border-radius: 50%; flex-shrink: 0;
+  background: radial-gradient(circle at 30% 25%, #5eead4 0%, var(--teal-600) 65%, #0b3b36 130%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(13, 148, 136, .35);
+}
+.acard-ava svg { width: 50px; height: 50px; }
+.acard-id { flex: 1; min-width: 0; }
+.acard-name-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.acard-name-row h2 { margin: 0; font-size: 22px; }
+.acard-meta { display: flex; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.badge.paused { background: #e2e8f0; color: #475569; }
+
+/* Kebab menu */
+.kebab { position: relative; flex-shrink: 0; }
+.kebab-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: #f1f5f9; color: var(--slate); font-size: 18px; line-height: 1;
+  cursor: pointer; font-weight: 700;
+}
+.kebab-btn:hover { background: #e2e8f0; }
+.kebab-menu {
+  display: none; position: absolute; right: 0; top: 44px; z-index: 20;
+  background: var(--white); border-radius: 12px; box-shadow: var(--shadow-md);
+  border: 1px solid var(--line); min-width: 170px; padding: 6px;
+}
+.kebab.open .kebab-menu { display: block; }
+.kebab-menu a, .kebab-menu button {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 12px; border: none; background: none; border-radius: 8px;
+  font-size: 14px; font-weight: 500; color: var(--ink); cursor: pointer;
+  text-align: left; font-family: var(--font);
+}
+.kebab-menu a:hover, .kebab-menu button:hover { background: #f1f5f9; }
+.kebab-menu form { margin: 0; }
+.kebab-menu .danger { color: #dc2626; }
+.kebab-menu .danger:hover { background: var(--red-bg); }
+
+/* Stats row */
+.acard-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  background: var(--bg); border-radius: 14px; padding: 18px 20px; margin: 20px 0;
+}
+.stat .stat-label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.stat strong { font-size: 26px; display: block; }
+.stat .trend { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; }
+.stat .trend small { display: block; font-weight: 400; color: var(--muted); }
+.trend.up { color: #059669; }
+.trend.down { color: #dc2626; }
+.stat + .stat { border-left: 1px solid var(--line); padding-left: 20px; }
+
+/* Card actions */
+.acard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.acard-btn { display: flex; justify-content: space-between; align-items: center; }
+.acard-sub {
+  display: flex; border: 1px solid var(--line); border-radius: 12px;
+  margin-top: 12px; overflow: hidden;
+}
+.acard-sub a, .acard-sub button {
+  flex: 1; padding: 12px 8px; text-align: center; font-size: 14px; font-weight: 600;
+  color: var(--slate); background: none; border: none; cursor: pointer;
+  font-family: var(--font);
+}
+.acard-sub a:hover, .acard-sub button:hover { background: var(--bg); color: var(--teal-700); }
+.acard-sub > * + * { border-left: 1px solid var(--line); }
+
+@media (max-width: 900px) {
+  .dash-grid { grid-template-columns: 1fr; }
+  .dash-side { position: static; }
+  .acard-stats { grid-template-columns: 1fr; gap: 14px; }
+  .stat + .stat { border-left: none; border-top: 1px solid var(--line); padding-left: 0; padding-top: 14px; }
+  .acard-actions { grid-template-columns: 1fr; }
+  .app-nav-inner { gap: 14px; padding: 10px 14px; }
+  .app-tabs { display: none; }
+  .app-support { padding: 7px 10px; font-size: 13px; }
+}
