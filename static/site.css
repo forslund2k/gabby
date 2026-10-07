@@ -73,7 +73,7 @@ img, svg { display: block; }
 }
 .brand { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
 .brand-mark { width: 30px; height: 30px; }
-.brand-logo { height: 34px; width: auto; display: block; }
+.brand-logo { height: 60px; width: auto; display: block; }
 .brand-name { font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -0.02em; }
 .nav-links { display: flex; gap: 28px; }
 .nav-links a, .nav-link {
