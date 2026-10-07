@@ -69,6 +69,11 @@ SITE_AGENT_SUGGESTIONS = [
     "Will it capture leads for my business?",
 ]
 
+# Support inbox: client messages from /support are emailed here via Resend.
+# Replies go straight back to the client via the Reply-To header.
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "tforslund@gmail.com")
+SUPPORT_FROM = "TryGabby Support <support@trygabby.com>"
+
 
 @app.context_processor
 def inject_version():
@@ -1220,6 +1225,71 @@ def send_lead_email(owner_email, agent_name, lead, leads_url):
         )
     except Exception as e:
         app.logger.warning("Lead email failed: %s", e)
+
+
+def send_support_email(user_email, subject, message):
+    """Email a client's support request to the support inbox via Resend.
+
+    Reply-To is the client's email, so replying in Gmail goes straight back
+    to them. Skips silently if unconfigured.
+    """
+    import html as _html
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key or not SUPPORT_EMAIL:
+        return False
+    esc = lambda v: _html.escape(str(v or ""))
+    subj = esc(subject)
+    body = esc(message).replace("\n", "<br>")
+    html_body = f"""\
+<div style="background:#f1f5f9;padding:24px 12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,0.08);">
+    <div style="background:#0d9488;padding:20px 24px;">
+      <div style="font-size:22px;font-weight:800;color:#ffffff;letter-spacing:0.5px;">Try<span style="opacity:0.85;">Gabby</span></div>
+      <div style="color:#ccfbf1;font-size:13px;margin-top:4px;">Support request from {esc(user_email)}</div>
+    </div>
+    <div style="padding:24px;">
+      <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:12px;">{subj}</div>
+      <div style="font-size:15px;color:#334155;line-height:1.6;">{body}</div>
+    </div>
+  </div>
+</div>"""
+    try:
+        requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}",
+                      "Content-Type": "application/json"},
+            json={
+                "from": SUPPORT_FROM,
+                "reply_to": user_email,
+                "to": [SUPPORT_EMAIL],
+                "subject": f"[Support] {subject}",
+                "html": html_body,
+                "text": f"Support request from {user_email}\n\nSubject: {subject}\n\n{message}",
+            },
+            timeout=15,
+        )
+        return True
+    except Exception as e:
+        app.logger.warning("Support email failed: %s", e)
+        return False
+
+
+@app.route("/support", methods=["GET", "POST"])
+@login_required
+def support():
+    user = current_user()
+    if request.method == "POST":
+        subject = (request.form.get("subject") or "").strip()[:120]
+        message = (request.form.get("message") or "").strip()[:4000]
+        if not subject or not message:
+            flash("Please add a subject and a message.", "error")
+            return render_template("support.html")
+        if send_support_email(user.email, subject, message):
+            flash("Message sent — we'll reply to the email on your account.", "ok")
+        else:
+            flash("Couldn't send that just now — please email support@trygabby.com directly.", "error")
+        return redirect(url_for("support"))
+    return render_template("support.html")
 
 
 @app.route("/api/chat", methods=["POST"])
