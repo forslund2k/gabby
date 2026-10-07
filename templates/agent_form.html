@@ -132,7 +132,7 @@
 })();
 </script>
 {% elif agent.crawl_status == "failed" %}
-<div class="flash error">We couldn't read your website. Check the URL on the Knowledge page and try crawling again.</div>
+<div class="flash error">We couldn't read your website{% if agent.crawl_error %} — {{ agent.crawl_error }}{% endif %}. Check the URL on the Knowledge page and try crawling again.</div>
 {% endif %}
 
 <form method="post">
