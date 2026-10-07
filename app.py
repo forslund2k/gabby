@@ -56,6 +56,12 @@ GABBY_VERSION = "0.23.0"
 CRAWL_MAX_PAGES = 100
 CRAWL_MAX_CHARS = 50000
 
+# Browser-like UA: some WAFs challenge or block obvious bot user-agents.
+# The GabbyBot token stays in for honest identification.
+CRAWL_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 "
+            "GabbyBot/1.0 (+https://trygabby.com)")
+
 DEFAULT_GREETING = "Hi there! How can I help?"
 
 # Built-in assistant that lives on the TryGabby marketing site and answers
@@ -102,6 +108,7 @@ class Agent(db.Model):
     hours = db.Column(db.Text, default="")  # JSON {monday: {open, close} | null, ...}
     hours_source = db.Column(db.String(20), default="")  # "" | "auto" | "confirmed"
     crawl_status = db.Column(db.String(20), default="")  # "" | "running" | "done" | "failed"
+    crawl_error = db.Column(db.String(200), default="")  # why a crawl returned zero pages
     public_key = db.Column(db.String(32), unique=True, nullable=False)
     lead_allow_call = db.Column(db.Boolean, default=True)   # owner lets visitors request a phone call
     lead_allow_sms = db.Column(db.Boolean, default=True)    # ... a text message
@@ -583,22 +590,28 @@ def demo_reply(agent, user_message, chunks):
 def crawl_site(start_url, max_pages=CRAWL_MAX_PAGES, max_chars=CRAWL_MAX_CHARS):
     """Fetch visible text from up to max_pages same-domain pages (BFS).
 
-    Returns (pages, site_title, warnings): pages is a list of {url, text} dicts,
-    site_title is the homepage <title> (used to name the business), and warnings
-    flags pages that look like scanned images with no readable text.
+    Returns (pages, site_title, warnings, error_note): pages is a list of
+    {url, text} dicts, site_title is the homepage <title> (used to name the
+    business), warnings flags pages that look like scanned images with no
+    readable text, and error_note explains a zero-page result ("" when pages
+    were found).
     """
     parsed = urlparse(start_url)
     domain = parsed.netloc
     seen, queue, pages, warnings = set(), [start_url], [], []
     site_title = None
+    fetch_error = ""
     while queue and len(pages) < max_pages:
         url = queue.pop(0)
         if url in seen:
             continue
         seen.add(url)
         try:
-            r = requests.get(url, timeout=10,
-                             headers={"User-Agent": "GabbyBot/1.0 (+https://trygabby.com)"})
+            r = requests.get(url, timeout=15, headers={"User-Agent": CRAWL_UA})
+            if r.status_code != 200:
+                if not fetch_error:
+                    fetch_error = f"the site returned HTTP {r.status_code}"
+                continue
             if "text/html" not in r.headers.get("Content-Type", ""):
                 continue
             soup = BeautifulSoup(r.text, "html.parser")
@@ -626,9 +639,17 @@ def crawl_site(start_url, max_pages=CRAWL_MAX_PAGES, max_chars=CRAWL_MAX_CHARS):
             # nothing here for the agent to learn from.
             if len(text) < 800 and img_count >= 3:
                 warnings.append({"url": url, "reason": "image-heavy"})
-        except Exception:
+        except requests.Timeout:
+            if not fetch_error:
+                fetch_error = "the site took too long to respond"
             continue  # skip failed pages, keep crawling
-    return pages, site_title, warnings
+        except Exception:
+            if not fetch_error:
+                fetch_error = "couldn't connect to the site"
+            continue  # skip failed pages, keep crawling
+    if not pages and not fetch_error:
+        fetch_error = "no readable text found on the site's pages"
+    return pages, site_title, warnings, fetch_error
 
 
 def clean_site_title(title):
@@ -734,7 +755,7 @@ def _crawl_agent_site(agent_id, url):
         if not agent:
             return
         try:
-            pages, site_title, warnings = crawl_site(url)
+            pages, site_title, warnings, fetch_error = crawl_site(url)
             new_chunks = []
             for pg in pages:
                 chunk = KnowledgeChunk(agent_id=agent.id, source_type="crawl",
@@ -753,11 +774,13 @@ def _crawl_agent_site(agent_id, url):
                 if drafted:
                     agent.suggestions = json.dumps(drafted)
             agent.crawl_status = "done" if pages else "failed"
+            agent.crawl_error = "" if pages else (fetch_error or "")[:200]
             db.session.commit()
         except Exception:
             app.logger.exception("Background crawl failed for agent %s", agent_id)
             try:
                 agent.crawl_status = "failed"
+                agent.crawl_error = "an unexpected error stopped the crawl"
                 db.session.commit()
             except Exception:
                 pass
@@ -947,7 +970,7 @@ def knowledge(agent_id):
             if p.scheme not in ("http", "https") or not p.netloc:
                 flash("Enter a full URL starting with http:// or https://", "error")
             else:
-                pages, site_title, warnings = crawl_site(url)
+                pages, site_title, warnings, fetch_error = crawl_site(url)
                 if pages:
                     new_chunks = []
                     for pg in pages:
@@ -990,7 +1013,8 @@ def knowledge(agent_id):
                                   "site — review them under Edit agent.", "ok")
                     flash_image_warnings(warnings)
                 else:
-                    flash("Couldn't extract any readable text from that URL.", "error")
+                    reason = f" ({fetch_error})" if fetch_error else ""
+                    flash(f"Couldn't extract any readable text from that URL{reason}.", "error")
 
         elif action == "delete":
             chunk_id = request.form.get("chunk_id", type=int)
@@ -1392,6 +1416,10 @@ def run_migrations():
     if "crawl_status" not in cols:
         db.session.execute(db.text(
             "ALTER TABLE agent ADD COLUMN crawl_status VARCHAR(20) DEFAULT ''"))
+        db.session.commit()
+    if "crawl_error" not in cols:
+        db.session.execute(db.text(
+            "ALTER TABLE agent ADD COLUMN crawl_error VARCHAR(200) DEFAULT ''"))
         db.session.commit()
     for _col in ("lead_allow_call", "lead_allow_sms", "lead_allow_email"):
         if _col not in cols:
