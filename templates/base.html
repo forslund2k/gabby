@@ -13,6 +13,22 @@
   {% block head %}{% endblock %}
 </head>
 <body>
+{% if session.get("user_id") %}
+<header class="app-header">
+  <div class="app-nav-inner">
+    <a class="brand" href="/dashboard" aria-label="TryGabby dashboard">
+      <span class="brand-badge sm"><img class="brand-logo" src="{{ url_for('static', filename='trygabby-logo-v2.jpg') }}" alt="TryGabby"></span>
+    </a>
+    <nav class="app-tabs" aria-label="Account">
+      <a href="/dashboard" class="{% if request.path == '/dashboard' %}active{% endif %}">Agents</a>
+    </nav>
+    <div class="app-nav-cta">
+      <a class="app-support" href="/support">Contact support</a>
+      <a class="btn btn-sm" href="/agents/new">+ New agent</a>
+    </div>
+  </div>
+</header>
+{% else %}
 <header class="site-header">
   <div class="nav-inner">
     <a class="brand" href="/" aria-label="TryGabby home">
@@ -50,6 +66,7 @@
     </div>
   </div>
 </header>
+{% endif %}
 
 <main class="{% block main_class %}container{% endblock %}">
   {% with messages = get_flashed_messages(with_categories=true) %}

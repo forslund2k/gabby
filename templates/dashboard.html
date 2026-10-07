@@ -1,82 +1,158 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="row" style="justify-content:space-between; margin-bottom:16px;">
-  <h1 style="margin:0;">Your agents</h1>
-  <div class="row" style="gap:8px;">
-    <a class="btn secondary" href="/support">Contact support</a>
-    <a class="btn" href="/agents/new">+ New agent</a>
+<div class="dash">
+  <div class="dash-head">
+    <h1>Your agents</h1>
+    <p class="muted">Manage your AI agents, view performance and access tools.</p>
   </div>
-</div>
-{% if demo_mode %}
-  <p><span class="badge">DEMO MODE</span> <span class="muted">No API key set — replies are keyword-based. Add GABBY_API_KEY for a real LLM.</span></p>
-{% else %}
-  <p><span class="badge live">LIVE</span> <span class="muted">Replies powered by {{ config.get("GABBY_MODEL_HINT", "") }}.</span></p>
-{% endif %}
-{% if agents %}
-  <div class="agent-grid">
-    {% for a in agents %}
-    <div class="card agent-card" style="--ac: {{ a.color }}">
-      <div class="agent-card-top">
-        <svg viewBox="0 0 48 48" class="agent-avatar" style="--ac: {{ a.color }}" aria-hidden="true">
-          <circle cx="24" cy="25" r="22" fill="var(--ac)" opacity="0.10"/>
-          <line x1="24" y1="14" x2="24" y2="8" stroke="var(--ac)" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="24" cy="6.5" r="2.5" fill="var(--ac)"/>
-          <rect x="13" y="14" width="22" height="20" rx="7" fill="none" stroke="var(--ac)" stroke-width="2.5"/>
-          <circle cx="20" cy="22" r="2.4" fill="var(--ac)"/>
-          <circle cx="28" cy="22" r="2.4" fill="var(--ac)"/>
-          <path d="M20 28 Q24 31 28 28" stroke="var(--ac)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
-        </svg>
-        <div class="agent-card-id">
-          <strong class="agent-card-name">{{ a.name }}</strong>
-          <div class="muted small">{{ a.public_key[:10] }}… · {{ a.created_at.strftime("%Y-%m-%d") }}</div>
+  {% if demo_mode %}
+  <div class="flash warning"><strong>DEMO MODE</strong> — no API key set, replies are keyword-based.</div>
+  {% endif %}
+  {% if agents %}
+  <div class="dash-grid">
+    <div class="dash-cards">
+      {% for a in agents %}
+      {% set s = stats[a.id] %}
+      <div class="acard" style="--ac: {{ a.color }}">
+        <div class="acard-top">
+          <div class="acard-ava" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <line x1="24" y1="14" x2="24" y2="8" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="24" cy="6.5" r="2.5" fill="#fff"/>
+              <rect x="13" y="14" width="22" height="20" rx="7" fill="none" stroke="#fff" stroke-width="2.5"/>
+              <circle cx="20" cy="22" r="2.4" fill="#fff"/>
+              <circle cx="28" cy="22" r="2.4" fill="#fff"/>
+              <path d="M20 28 Q24 31 28 28" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="acard-id">
+            <div class="acard-name-row">
+              <h2>{{ a.name }}</h2>
+              <div class="kebab">
+                <button type="button" class="kebab-btn" aria-label="Agent options" aria-haspopup="true">⋮</button>
+                <div class="kebab-menu" role="menu">
+                  <a href="{{ url_for('agent_edit', agent_id=a.id) }}" role="menuitem">✏️ Rename</a>
+                  <form method="post" action="{{ url_for('agent_duplicate', agent_id=a.id) }}">
+                    <button type="submit" role="menuitem">⧉ Duplicate</button>
+                  </form>
+                  <form method="post" action="{{ url_for('agent_toggle_active', agent_id=a.id) }}">
+                    <button type="submit" role="menuitem">{% if a.is_active %}⏸ Disable{% else %}▶ Enable{% endif %}</button>
+                  </form>
+                  <form method="post" action="{{ url_for('agent_delete', agent_id=a.id) }}"
+                        onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
+                    <button type="submit" class="danger" role="menuitem">🗑 Delete</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="acard-meta">
+              {% if a.is_active %}
+              <span class="badge live">LIVE</span>
+              {% else %}
+              <span class="badge paused">DISABLED</span>
+              {% endif %}
+              <span class="muted small">Powered by {{ config.get("GABBY_MODEL_HINT", "") }}</span>
+              <span class="muted small">Created {{ a.created_at.strftime("%b") }} {{ a.created_at.day }}, {{ a.created_at.year }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="acard-stats">
+          <div class="stat">
+            <span class="stat-label">💬 Conversations</span>
+            <strong>{{ s.conversations }}</strong>
+            {% if s.conv_trend %}
+            <span class="trend {{ 'up' if s.conv_trend.startswith('+') else 'down' }}">{{ "↑" if s.conv_trend.startswith("+") else "↓" }} {{ s.conv_trend }}<small>vs. last 7 days</small></span>
+            {% endif %}
+          </div>
+          <div class="stat">
+            <span class="stat-label">📈 Leads</span>
+            <strong>{{ s.leads }}</strong>
+            {% if s.lead_trend %}
+            <span class="trend {{ 'up' if s.lead_trend.startswith('+') else 'down' }}">{{ "↑" if s.lead_trend.startswith("+") else "↓" }} {{ s.lead_trend }}<small>vs. last 7 days</small></span>
+            {% endif %}
+          </div>
+          <div class="stat">
+            <span class="stat-label">📚 Knowledge</span>
+            <strong>{{ s.docs }} docs</strong>
+            <span class="muted small">in agent knowledge base</span>
+          </div>
+        </div>
+        <div class="acard-actions">
+          <a class="btn acard-btn" href="{{ url_for('chat_page', agent_id=a.id) }}"><span>💬 Test Chat</span><span aria-hidden="true">›</span></a>
+          <a class="btn secondary acard-btn{% if unread[a.id] %} btn-leads-hot{% endif %}" href="{{ url_for('agent_leads', agent_id=a.id) }}"><span>📥 Leads{% if unread[a.id] %} <span class="lead-badge">{{ unread[a.id] }}</span>{% endif %}</span><span aria-hidden="true">›</span></a>
+        </div>
+        <div class="acard-sub">
+          <a href="{{ url_for('agent_edit', agent_id=a.id) }}">✏️ Edit</a>
+          <a href="{{ url_for('knowledge', agent_id=a.id) }}">📚 Knowledge</a>
+          <button type="button" class="copy-embed-btn" data-snippet="{{ snippets[a.id] }}">🔗 Embed</button>
         </div>
       </div>
-      <div class="agent-actions">
-        <div class="agent-actions-primary">
-          <a class="btn small" href="/agents/{{ a.id }}/chat">💬 Test chat</a>
-          <a class="btn small secondary{% if unread[a.id] %} btn-leads-hot{% endif %}" href="/agents/{{ a.id }}/leads">📥 Leads{% if unread[a.id] %} <span class="lead-badge">{{ unread[a.id] }}</span>{% endif %}</a>
-        </div>
-        <div class="agent-actions-secondary">
-          <a class="btn small ghost" href="/agents/{{ a.id }}/edit">✏️ Edit</a>
-          <a class="btn small ghost" href="/agents/{{ a.id }}/knowledge">📚 Knowledge</a>
-          <button type="button" class="btn small ghost copy-embed-btn" data-snippet="{{ snippets[a.id] }}">🔗 Copy code</button>
-        </div>
-        <form method="post" action="/agents/{{ a.id }}/delete" class="agent-delete"
-              onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
-          <button class="link-danger" type="submit">Delete agent</button>
-        </form>
-      </div>
+      {% endfor %}
     </div>
-    {% endfor %}
+    <aside class="dash-side">
+      <div class="card side-panel">
+        <div class="side-ava" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <line x1="24" y1="14" x2="24" y2="8" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="24" cy="6.5" r="2.5" fill="#0d9488"/>
+            <rect x="13" y="14" width="22" height="20" rx="7" fill="none" stroke="#0d9488" stroke-width="2.5"/>
+            <circle cx="20" cy="22" r="2.4" fill="#0d9488"/>
+            <circle cx="28" cy="22" r="2.4" fill="#0d9488"/>
+            <path d="M20 28 Q24 31 28 28" stroke="#0d9488" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>Ready to create another agent?</h3>
+        <p class="muted">Build a new AI agent and give it its own knowledge, tools and goals.</p>
+        <a class="btn" href="{{ url_for('agent_new') }}">+ New agent</a>
+      </div>
+    </aside>
   </div>
-  <script>
-  (function () {
-    document.querySelectorAll(".copy-embed-btn").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var text = btn.getAttribute("data-snippet");
-        function done() {
-          var old = btn.textContent;
-          btn.textContent = "Copied!";
-          setTimeout(function () { btn.textContent = old; }, 2000);
-        }
-        function fallback() {
-          var ta = document.createElement("textarea");
-          ta.value = text; document.body.appendChild(ta); ta.select();
-          try { document.execCommand("copy"); } catch (e) {}
-          document.body.removeChild(ta); done();
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(done, fallback);
-        } else { fallback(); }
-      });
-    });
-  })();
-  </script>
-{% else %}
+  {% else %}
   <div class="card" style="text-align:center;">
     <p class="lead">No agents yet. Create your first one — it takes about a minute.</p>
-    <a class="btn" href="/agents/new">+ New agent</a>
+    <a class="btn" href="{{ url_for('agent_new') }}">+ New agent</a>
   </div>
-{% endif %}
+  {% endif %}
+</div>
+<script>
+(function () {
+  // Kebab menus: toggle on click, close on outside click or Escape.
+  document.querySelectorAll(".kebab").forEach(function (kebab) {
+    var btn = kebab.querySelector(".kebab-btn");
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var wasOpen = kebab.classList.contains("open");
+      document.querySelectorAll(".kebab.open").forEach(function (k) { k.classList.remove("open"); });
+      if (!wasOpen) kebab.classList.add("open");
+    });
+  });
+  document.addEventListener("click", function () {
+    document.querySelectorAll(".kebab.open").forEach(function (k) { k.classList.remove("open"); });
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") document.querySelectorAll(".kebab.open").forEach(function (k) { k.classList.remove("open"); });
+  });
+  // Embed copy buttons.
+  document.querySelectorAll(".copy-embed-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-snippet");
+      function done() {
+        var old = btn.innerHTML;
+        btn.textContent = "Copied!";
+        setTimeout(function () { btn.innerHTML = old; }, 2000);
+      }
+      function fallback() {
+        var ta = document.createElement("textarea");
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta); done();
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else { fallback(); }
+    });
+  });
+})();
+</script>
 {% endblock %}
