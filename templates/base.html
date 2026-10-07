@@ -9,32 +9,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='site.css') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   {% block head %}{% endblock %}
 </head>
 <body>
 <header class="site-header">
   <div class="nav-inner">
     <a class="brand" href="/" aria-label="TryGabby home">
-      <svg class="brand-logo" viewBox="0 0 470 160" aria-hidden="true">
-        <path d="M44 30 H114 A18 18 0 0 1 132 48 V86 A18 18 0 0 1 114 104 H62 L48 122 V104 H44 A18 18 0 0 1 26 86 V48 A18 18 0 0 1 44 30 Z" fill="rgba(13,148,136,0.06)" stroke="#0d9488" stroke-width="6"/>
-        <g stroke-linecap="round">
-          <line x1="60" y1="49" x2="60" y2="42" stroke="#0d9488" stroke-width="5"/>
-          <circle cx="60" cy="39" r="4.5" fill="#ec4899"/>
-          <rect x="36" y="49" width="44" height="40" rx="13" fill="rgba(13,148,136,0.08)" stroke="#0d9488" stroke-width="4"/>
-          <circle cx="52" cy="65" r="5" fill="#0d9488"/>
-          <circle cx="68" cy="65" r="5" fill="#0d9488"/>
-          <path d="M53 75 Q60 80 67 75" stroke="#0d9488" stroke-width="3.5" fill="none"/>
-          <g fill="rgba(13,148,136,0.06)" stroke="#0d9488" stroke-width="3">
-            <rect x="96" y="63" width="24" height="24" rx="10"/>
-            <rect x="94" y="47" width="7" height="18" rx="3.5" transform="rotate(-20 97 65)"/>
-            <rect x="101" y="44" width="7" height="20" rx="3.5" transform="rotate(-7 104 64)"/>
-            <rect x="108" y="44" width="7" height="20" rx="3.5" transform="rotate(7 111 64)"/>
-            <rect x="115" y="47" width="7" height="18" rx="3.5" transform="rotate(20 118 65)"/>
-            <rect x="88" y="75" width="14" height="7" rx="3.5" transform="rotate(-30 95 78)"/>
-          </g>
-        </g>
-        <text x="150" y="100" font-family="'Plus Jakarta Sans', -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="800" letter-spacing="1"><tspan fill="#0d9488">Try</tspan><tspan fill="#0f172a" dx="6">Gabby</tspan></text>
-      </svg>
+      <img class="brand-logo" src="{{ url_for('static', filename='trygabby-logo.jpg') }}" alt="TryGabby">
     </a>
     <nav class="nav-links">
       <a href="/#features">Features</a>
