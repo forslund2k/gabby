@@ -35,6 +35,17 @@
           <input type="color" id="color-input" name="color" value="#0d9488" style="width:56px; height:40px; padding:4px;">
           <span class="muted">or pick your own</span>
         </div>
+        <div class="bubble-preview">
+          <div class="bp-bubble" id="bubble-preview">&#128172;</div>
+          <div class="bp-panel">
+            <div class="bp-head" id="bubble-preview-head">Your agent</div>
+            <div class="bp-msgs">
+              <div class="bp-bot">Hi there! How can I help?</div>
+              <div class="bp-user" id="bubble-preview-user">What are your hours?</div>
+            </div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12px; margin-top:6px;">Live preview — this is what visitors see on your site.</p>
       </div>
       <div style="flex:1; min-width:220px;">
         <label>Business timezone <span class="muted">— so it knows today's date</span></label>
@@ -167,6 +178,17 @@
           <input type="color" id="color-input" name="color" value="{{ agent.color }}" style="width:56px; height:40px; padding:4px;">
           <span class="muted">or pick your own</span>
         </div>
+        <div class="bubble-preview">
+          <div class="bp-bubble" id="bubble-preview">&#128172;</div>
+          <div class="bp-panel">
+            <div class="bp-head" id="bubble-preview-head">{{ agent.name }}</div>
+            <div class="bp-msgs">
+              <div class="bp-bot">{{ agent.greeting if agent.greeting else 'Hi there! How can I help?' }}</div>
+              <div class="bp-user" id="bubble-preview-user">What are your hours?</div>
+            </div>
+          </div>
+        </div>
+        <p class="muted" style="font-size:12px; margin-top:6px;">Live preview — this is what visitors see on your site.</p>
       </div>
       <div style="flex:1; min-width:220px;">
         <label>Business timezone <span class="muted">— so it knows today's date</span></label>
@@ -217,6 +239,12 @@
     swatches.forEach(function (s) {
       s.classList.toggle("selected", s.getAttribute("data-color").toLowerCase() === colorInput.value.toLowerCase());
     });
+    var pb = document.getElementById("bubble-preview");
+    var ph = document.getElementById("bubble-preview-head");
+    var pu = document.getElementById("bubble-preview-user");
+    if (pb) pb.style.background = colorInput.value;
+    if (ph) ph.style.background = colorInput.value;
+    if (pu) pu.style.background = colorInput.value;
   }
   swatches.forEach(function (s) {
     s.addEventListener("click", function () { colorInput.value = s.getAttribute("data-color"); markSelected(); });
