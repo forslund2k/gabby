@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Contact support{% endblock %}
+{% block content %}
+<h1 style="margin-bottom:6px;">Contact support</h1>
+<p class="lead" style="margin-top:0;">Something not working, or a question we haven't answered? Write to us — we read everything.</p>
+
+<div class="card form-section" style="max-width:640px;">
+  <form method="post">
+    <label>Subject</label>
+    <input type="text" name="subject" maxlength="120" required placeholder="e.g. My widget isn't showing up">
+    <label style="margin-top:12px;">What's going on?</label>
+    <textarea name="message" rows="6" maxlength="4000" required placeholder="Tell us what happened and what you expected…" style="width:100%;"></textarea>
+    <p style="margin-top:16px;">
+      <button class="btn" type="submit">Send message</button>
+      <a class="btn secondary" href="/dashboard" style="margin-left:8px;">Back to dashboard</a>
+    </p>
+  </form>
+  <p class="muted" style="font-size:13px;">Prefer email? Write to <a href="mailto:support@trygabby.com">support@trygabby.com</a> — we'll reply to the address on your account.</p>
+</div>
+{% endblock %}

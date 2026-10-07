@@ -3,7 +3,10 @@
 {% block content %}
 <div class="row" style="justify-content:space-between; margin-bottom:16px;">
   <h1 style="margin:0;">Your agents</h1>
-  <a class="btn" href="/agents/new">+ New agent</a>
+  <div class="row" style="gap:8px;">
+    <a class="btn secondary" href="/support">Contact support</a>
+    <a class="btn" href="/agents/new">+ New agent</a>
+  </div>
 </div>
 {% if demo_mode %}
   <p><span class="badge">DEMO MODE</span> <span class="muted">No API key set — replies are keyword-based. Add GABBY_API_KEY for a real LLM.</span></p>
