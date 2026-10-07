@@ -57,6 +57,17 @@ CRAWL_MAX_CHARS = 50000
 
 DEFAULT_GREETING = "Hi there! How can I help?"
 
+# Built-in assistant that lives on the TryGabby marketing site and answers
+# visitor questions about the product itself. Seeded at startup; owned by an
+# internal system user so it never appears in anyone's dashboard.
+SITE_AGENT_PUBLIC_KEY = "trygabby-site-assistant"
+SITE_AGENT_EMAIL = "system@trygabby.com"
+SITE_AGENT_SUGGESTIONS = [
+    "How much does TryGabby cost?",
+    "How does it work?",
+    "Will it capture leads for my business?",
+]
+
 
 @app.context_processor
 def inject_version():
@@ -630,12 +641,12 @@ def clean_site_title(title):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", site_agent_key=SITE_AGENT_PUBLIC_KEY)
 
 
 @app.route("/pricing")
 def pricing():
-    return render_template("pricing.html")
+    return render_template("pricing.html", site_agent_key=SITE_AGENT_PUBLIC_KEY)
 
 
 @app.route("/signup", methods=["GET", "POST"])
@@ -1240,7 +1251,9 @@ def api_chat():
     asst_msg = Message(conversation_id=conv.id, role="assistant", content=reply)
     db.session.add(user_msg)
     db.session.add(asst_msg)
-    new_lead = capture_lead(agent, conv, user_msg, asst_msg, history)
+    new_lead = None
+    if agent.public_key != SITE_AGENT_PUBLIC_KEY:
+        new_lead = capture_lead(agent, conv, user_msg, asst_msg, history)
     lead_info = None
     if new_lead:
         lead_info = {"name": new_lead.name, "phone": new_lead.phone,
@@ -1331,9 +1344,67 @@ def run_migrations():
 
 
 # Run at import time too — production servers (gunicorn) never hit __main__.
+def ensure_site_agent():
+    """Create the built-in TryGabby assistant for the marketing site, once.
+
+    Owned by an internal system user so it never shows in a customer
+    dashboard. Knowledge comes from site_knowledge.md; embeddings backfill
+    lazily on first chat via _ensure_embeddings.
+    """
+    agent = Agent.query.filter_by(public_key=SITE_AGENT_PUBLIC_KEY).first()
+    if agent and agent.chunks:
+        return agent
+    user = User.query.filter_by(email=SITE_AGENT_EMAIL).first()
+    if not user:
+        user = User(email=SITE_AGENT_EMAIL,
+                    password_hash="!")
+        db.session.add(user)
+        db.session.flush()
+    if not agent:
+        agent = Agent(
+            user_id=user.id,
+            name="TryGabby Assistant",
+            greeting="Hi! I'm the TryGabby assistant. Ask me about pricing, features, or how it works.",
+            color="#0d9488",
+            timezone="America/Detroit",
+            public_key=SITE_AGENT_PUBLIC_KEY,
+            instructions=(
+                "You are the friendly assistant for TryGabby (trygabby.com), "
+                "an AI chat agent service for businesses of every size. Answer "
+                "visitor questions about TryGabby using the provided knowledge. "
+                "Keep answers short and conversational (1-3 sentences). If asked "
+                "about something not in your knowledge, say you don't know and "
+                "suggest signing up for the free beta. Never invent pricing, "
+                "features, or customer stories."
+            ),
+            suggestions=json.dumps(SITE_AGENT_SUGGESTIONS),
+        )
+        db.session.add(agent)
+        db.session.flush()
+    if not agent.chunks:
+        here = os.path.dirname(os.path.abspath(__file__))
+        md_path = os.path.join(here, "site_knowledge.md")
+        try:
+            with open(md_path, encoding="utf-8") as f:
+                text = f.read()
+        except OSError:
+            text = ""
+        sections = [s.strip() for s in re.split(r"\n## ", text) if s.strip()]
+        for i, section in enumerate(sections):
+            db.session.add(KnowledgeChunk(
+                agent_id=agent.id,
+                source_type="paste",
+                source_label="About TryGabby",
+                content=section[:2000],
+            ))
+    db.session.commit()
+    return agent
+
+
 with app.app_context():
     db.create_all()
     run_migrations()
+    ensure_site_agent()
 
 
 if __name__ == "__main__":
