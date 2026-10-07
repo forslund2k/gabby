@@ -41,6 +41,7 @@ if _db_url.startswith("postgres://"):  # Render/Heroku style -> SQLAlchemy wants
     _db_url = _db_url.replace("postgres://", "postgresql://", 1)
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_url or "sqlite:///" + os.path.join(BASE_DIR, "gabby.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["GABBY_MODEL_HINT"] = "OpenAI"
 db = SQLAlchemy(app)
 
 # Chat-brain (LLM) configuration. Demo mode when no key is present.
