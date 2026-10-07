@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}TryGabby{% endblock %} — AI chat agents for every business</title>
-  <meta name="description" content="TryGabby builds an AI chat agent trained on your business. Paste one snippet on your website and start answering customers 24/7.">
+  <meta name="description" content="Make every customer feel like your only customer. TryGabby builds an AI chat agent for your business — whether you're just starting out or running a large company.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -125,5 +125,21 @@
   </div>
   <div class="footer-base">© 2026 TryGabby. All rights reserved. <span class="muted">v{{ gabby_version }}</span></div>
 </footer>
+<script>
+(function () {
+  var btn = document.getElementById("nav-menu-btn");
+  var menu = document.getElementById("nav-menu");
+  if (!btn || !menu) return;
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var open = menu.classList.toggle("open");
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  menu.addEventListener("click", function (e) {
+    if (e.target.tagName === "A") menu.classList.remove("open");
+  });
+  document.addEventListener("click", function () { menu.classList.remove("open"); });
+})();
+</script>
 </body>
 </html>
