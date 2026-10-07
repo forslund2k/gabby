@@ -19,7 +19,7 @@ import json
 import math
 import secrets
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -123,6 +123,7 @@ class Agent(db.Model):
     hours_source = db.Column(db.String(20), default="")  # "" | "auto" | "confirmed"
     crawl_status = db.Column(db.String(20), default="")  # "" | "running" | "done" | "failed"
     crawl_error = db.Column(db.String(200), default="")  # why a crawl returned zero pages
+    is_active = db.Column(db.Boolean, default=True)  # disabled agents show offline in the widget
     public_key = db.Column(db.String(32), unique=True, nullable=False)
     lead_allow_call = db.Column(db.Boolean, default=True)   # owner lets visitors request a phone call
     lead_allow_sms = db.Column(db.Boolean, default=True)    # ... a text message
@@ -744,8 +745,45 @@ def dashboard():
     base = request.host_url.rstrip("/")
     snippets = {a.id: f'<script src="{base}/embed/{a.public_key}.js"></script>' for a in agents}
     unread = {a.id: Lead.query.filter_by(agent_id=a.id, is_read=False).count() for a in agents}
+    stats = {a.id: agent_stats(a) for a in agents}
     return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE,
-                           snippets=snippets, unread=unread)
+                           snippets=snippets, unread=unread, stats=stats)
+
+
+def _trend(this_week, last_week):
+    """Week-over-week % change like '+12%'; None when there's no baseline."""
+    if last_week == 0:
+        return None
+    pct = round((this_week - last_week) / last_week * 100)
+    return f"+{pct}%" if pct >= 0 else f"{pct}%"
+
+
+def agent_stats(agent):
+    """Card stats: conversations, leads, knowledge docs + 7-day trends."""
+    now = datetime.utcnow()
+    week_ago = now - timedelta(days=7)
+    two_weeks_ago = now - timedelta(days=14)
+    conv_this = Conversation.query.filter(
+        Conversation.agent_id == agent.id,
+        Conversation.created_at >= week_ago).count()
+    conv_last = Conversation.query.filter(
+        Conversation.agent_id == agent.id,
+        Conversation.created_at >= two_weeks_ago,
+        Conversation.created_at < week_ago).count()
+    lead_this = Lead.query.filter(
+        Lead.agent_id == agent.id, Lead.created_at >= week_ago).count()
+    lead_last = Lead.query.filter(
+        Lead.agent_id == agent.id,
+        Lead.created_at >= two_weeks_ago,
+        Lead.created_at < week_ago).count()
+    docs = KnowledgeChunk.query.filter_by(agent_id=agent.id).count()
+    return {
+        "conversations": conv_this,
+        "conv_trend": _trend(conv_this, conv_last),
+        "leads": lead_this,
+        "lead_trend": _trend(lead_this, lead_last),
+        "docs": docs,
+    }
 
 
 
@@ -901,6 +939,52 @@ def agent_delete(agent_id):
     db.session.delete(agent)
     db.session.commit()
     flash(f"Agent '{agent.name}' deleted.", "ok")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/agents/<int:agent_id>/duplicate", methods=["POST"])
+@login_required
+def agent_duplicate(agent_id):
+    """Copy an agent and its knowledge under a fresh public key."""
+    user = current_user()
+    agent = get_agent_or_404(agent_id, user)
+    copy = Agent(
+        user_id=user.id,
+        name=f"{agent.name} (copy)",
+        instructions=agent.instructions,
+        color=agent.color,
+        timezone=agent.timezone,
+        suggestions=agent.suggestions,
+        greeting=agent.greeting,
+        hours=agent.hours,
+        hours_source=agent.hours_source,
+        public_key=secrets.token_urlsafe(16),
+        lead_allow_call=getattr(agent, "lead_allow_call", True),
+        lead_allow_sms=getattr(agent, "lead_allow_sms", True),
+        lead_allow_email=getattr(agent, "lead_allow_email", True),
+        is_active=True,
+    )
+    db.session.add(copy)
+    db.session.flush()
+    for c in agent.chunks:
+        db.session.add(KnowledgeChunk(
+            agent_id=copy.id, source_type=c.source_type,
+            source_label=c.source_label, content=c.content,
+            embedding=c.embedding))
+    db.session.commit()
+    flash(f"Duplicated '{agent.name}'.", "ok")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/agents/<int:agent_id>/toggle-active", methods=["POST"])
+@login_required
+def agent_toggle_active(agent_id):
+    """Disable/enable an agent. Disabled agents show offline in the widget."""
+    user = current_user()
+    agent = get_agent_or_404(agent_id, user)
+    agent.is_active = not getattr(agent, "is_active", True)
+    db.session.commit()
+    flash(f"'{agent.name}' is now {'live' if agent.is_active else 'disabled'}.", "ok")
     return redirect(url_for("dashboard"))
 
 
@@ -1345,6 +1429,10 @@ def api_chat():
     agent = Agent.query.filter_by(public_key=public_key).first()
     if not agent:
         return jsonify({"error": "Unknown agent key."}), 404
+    if not getattr(agent, "is_active", True):
+        return jsonify({"reply": "This chat is currently offline. Please check back later.",
+                        "demo_mode": DEMO_MODE, "session_token": session_token or "",
+                        "sources": []})
     if not user_message:
         return jsonify({"error": "Empty message."}), 400
 
@@ -1439,6 +1527,11 @@ def run_migrations():
     if "crawl_error" not in cols:
         db.session.execute(db.text(
             "ALTER TABLE agent ADD COLUMN crawl_error VARCHAR(200) DEFAULT ''"))
+        db.session.commit()
+    if "is_active" not in cols:
+        # Postgres needs BOOLEAN DEFAULT TRUE (SQLite also accepts it).
+        db.session.execute(db.text(
+            "ALTER TABLE agent ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
         db.session.commit()
     for _col in ("lead_allow_call", "lead_allow_sms", "lead_allow_email"):
         if _col not in cols:
