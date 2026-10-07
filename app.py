@@ -624,7 +624,12 @@ def crawl_site(start_url, max_pages=CRAWL_MAX_PAGES, max_chars=CRAWL_MAX_CHARS):
             r = requests.get(url, timeout=15, headers=CRAWL_HEADERS)
             if r.status_code != 200:
                 if not fetch_error:
-                    fetch_error = f"the site returned HTTP {r.status_code}"
+                    if r.status_code == 403:
+                        fetch_error = "the site's bot protection blocked our crawler"
+                    elif r.status_code == 404:
+                        fetch_error = "that page wasn't found (HTTP 404)"
+                    else:
+                        fetch_error = f"the site returned an error (HTTP {r.status_code})"
                 continue
             if "text/html" not in r.headers.get("Content-Type", ""):
                 continue
