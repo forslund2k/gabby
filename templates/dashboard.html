@@ -32,14 +32,18 @@
         </div>
       </div>
       <div class="agent-actions">
-        <a class="btn small secondary" href="/agents/{{ a.id }}/edit">✏️ Edit</a>
-        <a class="btn small secondary" href="/agents/{{ a.id }}/knowledge">📚 Knowledge</a>
-        <a class="btn small" href="/agents/{{ a.id }}/chat">💬 Test chat</a>
-        <button type="button" class="btn small secondary copy-embed-btn" data-snippet="{{ snippets[a.id] }}">🔗 Copy website code</button>
-        <a class="btn small secondary{% if unread[a.id] %} btn-leads-hot{% endif %}" href="/agents/{{ a.id }}/leads">📥 Leads{% if unread[a.id] %} <span class="lead-badge">{{ unread[a.id] }}</span>{% endif %}</a>
-        <form method="post" action="/agents/{{ a.id }}/delete" style="display:inline;"
+        <div class="agent-actions-primary">
+          <a class="btn small" href="/agents/{{ a.id }}/chat">💬 Test chat</a>
+          <a class="btn small secondary{% if unread[a.id] %} btn-leads-hot{% endif %}" href="/agents/{{ a.id }}/leads">📥 Leads{% if unread[a.id] %} <span class="lead-badge">{{ unread[a.id] }}</span>{% endif %}</a>
+        </div>
+        <div class="agent-actions-secondary">
+          <a class="btn small ghost" href="/agents/{{ a.id }}/edit">✏️ Edit</a>
+          <a class="btn small ghost" href="/agents/{{ a.id }}/knowledge">📚 Knowledge</a>
+          <button type="button" class="btn small ghost copy-embed-btn" data-snippet="{{ snippets[a.id] }}">🔗 Copy code</button>
+        </div>
+        <form method="post" action="/agents/{{ a.id }}/delete" class="agent-delete"
               onsubmit="return confirm('Delete {{ a.name }} and all its data?');">
-          <button class="btn small danger" type="submit">🗑️ Delete</button>
+          <button class="link-danger" type="submit">Delete agent</button>
         </form>
       </div>
     </div>
