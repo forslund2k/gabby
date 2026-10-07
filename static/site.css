@@ -386,7 +386,7 @@ code.snippet {
 .agent-actions { display: flex; flex-direction: column; gap: 10px; }
 .agent-actions-primary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .agent-actions-secondary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); box-shadow: none; font-weight: 600; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); box-shadow: none; font-weight: 600; white-space: nowrap; }
 .btn.ghost:hover { background: #f1f5f9; color: var(--ink); box-shadow: none; transform: none; }
 .agent-delete { margin: 0; text-align: center; }
 .link-danger { background: none; border: none; color: #b91c1c; font-size: 12.5px; font-family: var(--font); cursor: pointer; padding: 2px 6px; }
