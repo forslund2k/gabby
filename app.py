@@ -61,6 +61,20 @@ CRAWL_MAX_CHARS = 50000
 CRAWL_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 "
             "GabbyBot/1.0 (+https://trygabby.com)")
+# Full browser header set: some WAFs also inspect these.
+CRAWL_HEADERS = {
+    "User-Agent": CRAWL_UA,
+    "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,"
+               "image/avif,image/webp,*/*;q=0.8"),
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+}
 
 DEFAULT_GREETING = "Hi there! How can I help?"
 
@@ -607,7 +621,7 @@ def crawl_site(start_url, max_pages=CRAWL_MAX_PAGES, max_chars=CRAWL_MAX_CHARS):
             continue
         seen.add(url)
         try:
-            r = requests.get(url, timeout=15, headers={"User-Agent": CRAWL_UA})
+            r = requests.get(url, timeout=15, headers=CRAWL_HEADERS)
             if r.status_code != 200:
                 if not fetch_error:
                     fetch_error = f"the site returned HTTP {r.status_code}"
