@@ -29,7 +29,7 @@
     "#gabby-input{flex:1;border:none;padding:12px;font-size:14px;outline:none;}",
     "#gabby-send{background:" + COLOR + ";color:#fff;border:none;padding:0 16px;cursor:pointer;font-size:14px;}",
     "#gabby-mic{background:#fff;border:none;padding:0 12px;cursor:pointer;font-size:18px;color:#666;}",
-    "#gabby-mic.listening{color:#e02424;animation:gabby-pulse 1.2s infinite;}",
+    "#gabby-mic.listening{color:#16a34a;animation:gabby-pulse 1.2s infinite;}",
     "@keyframes gabby-pulse{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}",
     "#gabby-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px;}",
     ".gabby-chip{border:1px solid " + COLOR + ";color:" + COLOR + ";background:#fff;border-radius:16px;",
