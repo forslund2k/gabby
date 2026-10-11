@@ -28,6 +28,9 @@
     "#gabby-form{display:flex;border-top:1px solid #e5e5e5;}",
     "#gabby-input{flex:1;border:none;padding:12px;font-size:14px;outline:none;}",
     "#gabby-send{background:" + COLOR + ";color:#fff;border:none;padding:0 16px;cursor:pointer;font-size:14px;}",
+    "#gabby-mic{background:#fff;border:none;padding:0 12px;cursor:pointer;font-size:18px;color:#666;}",
+    "#gabby-mic.listening{color:#e02424;animation:gabby-pulse 1.2s infinite;}",
+    "@keyframes gabby-pulse{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}",
     "#gabby-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px;}",
     ".gabby-chip{border:1px solid " + COLOR + ";color:" + COLOR + ";background:#fff;border-radius:16px;",
     "padding:5px 12px;font-size:12.5px;cursor:pointer;}",
@@ -51,6 +54,7 @@
     '<div id="gabby-msgs"></div>' +
     '<div id="gabby-chips"></div>' +
     '<form id="gabby-form"><input id="gabby-input" placeholder="Type a message&hellip;" autocomplete="off"/>' +
+    '<button id="gabby-mic" type="button" aria-label="Speak your message">&#127908;</button>' +
     '<button id="gabby-send" type="submit">Send</button></form>';
   document.body.appendChild(panel);
 
@@ -112,4 +116,40 @@
     input.value = "";
     sendText(text);
   };
+
+  // --- voice input (free browser speech recognition; transcript lands in the
+  // --- input box for review — nothing is sent until the visitor hits Send)
+  var micBtn = panel.querySelector("#gabby-mic");
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    micBtn.style.display = "none";
+  } else {
+    var recog = new SR();
+    recog.interimResults = true;
+    var listening = false;
+    var baseText = "";
+    micBtn.onclick = function () {
+      if (listening) { recog.stop(); return; }
+      baseText = input.value.trim();
+      input.focus();
+      try { recog.start(); } catch (e) { /* already started */ }
+    };
+    var endListen = function () {
+      listening = false;
+      micBtn.classList.remove("listening");
+      micBtn.setAttribute("aria-label", "Speak your message");
+    };
+    recog.onstart = function () {
+      listening = true;
+      micBtn.classList.add("listening");
+      micBtn.setAttribute("aria-label", "Stop listening");
+    };
+    recog.onend = endListen;
+    recog.onerror = endListen;
+    recog.onresult = function (e) {
+      var t = "";
+      for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript;
+      input.value = ((baseText ? baseText + " " : "") + t).trim();
+    };
+  }
 })();
