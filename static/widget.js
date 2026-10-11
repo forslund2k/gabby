@@ -28,7 +28,7 @@
     "#gabby-form{display:flex;border-top:1px solid #e5e5e5;}",
     "#gabby-input{flex:1;border:none;padding:12px;font-size:14px;outline:none;}",
     "#gabby-send{background:" + COLOR + ";color:#fff;border:none;padding:0 16px;cursor:pointer;font-size:14px;}",
-    "#gabby-mic{background:#fff;border:none;padding:0 12px;cursor:pointer;font-size:18px;color:#666;}",
+    "#gabby-mic{background:#fff;border:none;padding:0 10px 0 12px;cursor:pointer;color:#0d9488;display:flex;align-items:center;}",
     "#gabby-mic.listening{color:#16a34a;animation:gabby-pulse 1.2s infinite;}",
     "@keyframes gabby-pulse{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}",
     "#gabby-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px;}",
@@ -54,7 +54,8 @@
     '<div id="gabby-msgs"></div>' +
     '<div id="gabby-chips"></div>' +
     '<form id="gabby-form"><input id="gabby-input" placeholder="Type a message&hellip;" autocomplete="off"/>' +
-    '<button id="gabby-mic" type="button" aria-label="Speak your message">&#127908;</button>' +
+    '<button id="gabby-mic" type="button" aria-label="Speak your message">' +
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>' +
     '<button id="gabby-send" type="submit">Send</button></form>';
   document.body.appendChild(panel);
 
