@@ -129,6 +129,7 @@
     recog.interimResults = true;
     var listening = false;
     var baseText = "";
+    var normalPlaceholder = input.getAttribute("placeholder");
     micBtn.onclick = function () {
       if (listening) { recog.stop(); return; }
       baseText = input.value.trim();
@@ -139,11 +140,13 @@
       listening = false;
       micBtn.classList.remove("listening");
       micBtn.setAttribute("aria-label", "Speak your message");
+      input.setAttribute("placeholder", normalPlaceholder);
     };
     recog.onstart = function () {
       listening = true;
       micBtn.classList.add("listening");
       micBtn.setAttribute("aria-label", "Stop listening");
+      input.setAttribute("placeholder", "Listening… speak now");
     };
     recog.onend = endListen;
     recog.onerror = endListen;
