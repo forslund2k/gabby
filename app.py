@@ -1585,7 +1585,7 @@ def ensure_site_agent():
                 "visitor questions about TryGabby using the provided knowledge. "
                 "Keep answers short and conversational (1-3 sentences). If asked "
                 "about something not in your knowledge, say you don't know and "
-                "suggest signing up for the free beta. Never invent pricing, "
+                "suggest signing up ($20 first month, then $39/mo). Never invent pricing, "
                 "features, or customer stories."
             ),
             suggestions=json.dumps(SITE_AGENT_SUGGESTIONS),

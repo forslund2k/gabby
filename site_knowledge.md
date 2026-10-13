@@ -22,8 +22,12 @@ Getting started takes about 10 minutes:
 
 ## Pricing
 
-Free during the beta — no credit card required. Planned paid plans: Starter $49 per month and Growth $149 per month.
+First month $20, then $39 per month. One plan with unlimited chats — no per-message fees. Cancel anytime.
 
 ## What's coming
 
-Voice calling is on the roadmap: customers will be able to talk to your agent by phone. Beta customers will be first in line when it lands.
+Voice calling is on the roadmap: customers will be able to talk to your agent by phone. Customers will be first in line when it lands.
+
+## Speak-to-Chat (live now)
+
+Every agent's chat widget includes a microphone button. Visitors tap it and talk — their words appear as a chat message and the agent answers in text. Nothing to configure, no extra cost.
