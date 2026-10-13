@@ -2,7 +2,9 @@
 {% block title %}TryGabby — AI chat agents for every business{% endblock %}
 {% block main_class %}landing{% endblock %}
 {% block head %}
-<style>main.landing { padding: 0; }</style>
+<style>main.landing { padding: 0; }
+.trailer-wrap { max-width: 820px; margin: 0 auto; }
+.trailer-video { width: 100%; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.18); display: block; }</style>
 {% endblock %}
 {% block content %}
 
@@ -191,6 +193,23 @@
         </form>
       </div>
       <p class="demo-note">Live demo running on a real TryGabby agent — the same tech your business would get.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VIDEO DEMO ============ -->
+<section class="section" id="video-demo">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">Watch it work</span>
+      <h2>See Gabby in action — 48 seconds.</h2>
+      <p>Watch a demo agent answer questions, take a voice message, and capture a lead — while the bakery sleeps.</p>
+    </div>
+    <div class="trailer-wrap">
+      <video class="trailer-video" controls preload="metadata" poster="{{ url_for('static', filename='trailer-poster.jpg') }}">
+        <source src="{{ url_for('static', filename='trygabby-trailer.mp4') }}" type="video/mp4">
+        Your browser doesn't support video. <a href="{{ url_for('static', filename='trygabby-trailer.mp4') }}">Download the demo video</a>.
+      </video>
     </div>
   </div>
 </section>
