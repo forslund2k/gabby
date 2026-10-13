@@ -1423,7 +1423,7 @@ def support():
 def api_chat():
     data = request.get_json(force=True, silent=True) or {}
     public_key = data.get("public_key", "")
-    session_token = data.get("session_token", "")[:64]
+    session_token = (data.get("session_token") or "")[:64]
     user_message = (data.get("message") or "").strip()
 
     agent = Agent.query.filter_by(public_key=public_key).first()
