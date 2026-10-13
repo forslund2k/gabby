@@ -18,6 +18,7 @@ import re
 import json
 import math
 import secrets
+import hashlib
 import threading
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
@@ -124,6 +125,7 @@ class Agent(db.Model):
     crawl_status = db.Column(db.String(20), default="")  # "" | "running" | "done" | "failed"
     crawl_error = db.Column(db.String(200), default="")  # why a crawl returned zero pages
     is_active = db.Column(db.Boolean, default=True)  # disabled agents show offline in the widget
+    site_knowledge_hash = db.Column(db.String(64), default="")  # sha256 of site_knowledge.md at last seed
     public_key = db.Column(db.String(32), unique=True, nullable=False)
     lead_allow_call = db.Column(db.Boolean, default=True)   # owner lets visitors request a phone call
     lead_allow_sms = db.Column(db.Boolean, default=True)    # ... a text message
@@ -1533,6 +1535,10 @@ def run_migrations():
         db.session.execute(db.text(
             "ALTER TABLE agent ADD COLUMN is_active BOOLEAN DEFAULT TRUE"))
         db.session.commit()
+    if "site_knowledge_hash" not in cols:
+        db.session.execute(db.text(
+            "ALTER TABLE agent ADD COLUMN site_knowledge_hash VARCHAR(64) DEFAULT ''"))
+        db.session.commit()
     for _col in ("lead_allow_call", "lead_allow_sms", "lead_allow_email"):
         if _col not in cols:
             db.session.execute(db.text(
@@ -1561,9 +1567,37 @@ def ensure_site_agent():
     Owned by an internal system user so it never shows in a customer
     dashboard. Knowledge comes from site_knowledge.md; embeddings backfill
     lazily on first chat via _ensure_embeddings.
+
+    The site agent is code-owned: whenever site_knowledge.md changes (hash
+    mismatch), its chunks are re-seeded from the file and its code-owned
+    fields (instructions, greeting, suggestions) are synced. That way a
+    pricing or feature edit reaches production on the next deploy instead
+    of going stale.
     """
+    here = os.path.dirname(os.path.abspath(__file__))
+    md_path = os.path.join(here, "site_knowledge.md")
+    try:
+        with open(md_path, encoding="utf-8") as f:
+            md_text = f.read()
+    except OSError:
+        md_text = ""
+    md_hash = hashlib.sha256(md_text.encode("utf-8")).hexdigest()
+    site_instructions = (
+        "You are the friendly assistant for TryGabby (trygabby.com), "
+        "an AI chat agent service for businesses of every size. Answer "
+        "visitor questions about TryGabby using the provided knowledge. "
+        "Keep answers short and conversational (1-3 sentences). If asked "
+        "about something not in your knowledge, say you don't know and "
+        "suggest signing up ($20 first month, then $39/mo). Never invent pricing, "
+        "features, or customer stories."
+    )
     agent = Agent.query.filter_by(public_key=SITE_AGENT_PUBLIC_KEY).first()
-    if agent and agent.chunks:
+    if agent and agent.chunks and getattr(agent, "site_knowledge_hash", "") == md_hash:
+        # Already current — still sync code-owned fields in case they changed.
+        agent.instructions = site_instructions
+        agent.greeting = "Hi! I'm the TryGabby assistant. Ask me about pricing, features, or how it works."
+        agent.suggestions = json.dumps(SITE_AGENT_SUGGESTIONS)
+        db.session.commit()
         return agent
     user = User.query.filter_by(email=SITE_AGENT_EMAIL).first()
     if not user:
@@ -1579,35 +1613,25 @@ def ensure_site_agent():
             color="#0d9488",
             timezone="America/Detroit",
             public_key=SITE_AGENT_PUBLIC_KEY,
-            instructions=(
-                "You are the friendly assistant for TryGabby (trygabby.com), "
-                "an AI chat agent service for businesses of every size. Answer "
-                "visitor questions about TryGabby using the provided knowledge. "
-                "Keep answers short and conversational (1-3 sentences). If asked "
-                "about something not in your knowledge, say you don't know and "
-                "suggest signing up ($20 first month, then $39/mo). Never invent pricing, "
-                "features, or customer stories."
-            ),
+            instructions=site_instructions,
             suggestions=json.dumps(SITE_AGENT_SUGGESTIONS),
         )
         db.session.add(agent)
         db.session.flush()
-    if not agent.chunks:
-        here = os.path.dirname(os.path.abspath(__file__))
-        md_path = os.path.join(here, "site_knowledge.md")
-        try:
-            with open(md_path, encoding="utf-8") as f:
-                text = f.read()
-        except OSError:
-            text = ""
-        sections = [s.strip() for s in re.split(r"\n## ", text) if s.strip()]
-        for i, section in enumerate(sections):
-            db.session.add(KnowledgeChunk(
-                agent_id=agent.id,
-                source_type="paste",
-                source_label="About TryGabby",
-                content=section[:2000],
-            ))
+    # (Re)seed knowledge from the current file.
+    db.session.query(KnowledgeChunk).filter_by(agent_id=agent.id).delete()
+    sections = [s.strip() for s in re.split(r"\n## ", md_text) if s.strip()]
+    for i, section in enumerate(sections):
+        db.session.add(KnowledgeChunk(
+            agent_id=agent.id,
+            source_type="paste",
+            source_label="About TryGabby",
+            content=section[:2000],
+        ))
+    agent.site_knowledge_hash = md_hash
+    agent.instructions = site_instructions
+    agent.greeting = "Hi! I'm the TryGabby assistant. Ask me about pricing, features, or how it works."
+    agent.suggestions = json.dumps(SITE_AGENT_SUGGESTIONS)
     db.session.commit()
     return agent
 
