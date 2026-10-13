@@ -254,6 +254,7 @@ img, svg { display: block; }
 
 /* ---------- pricing teaser / page ---------- */
 .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; max-width: 1020px; margin: 0 auto; }
+.tiers.single { grid-template-columns: minmax(0, 400px); justify-content: center; }
 .tier {
   background: var(--white); border: 2px solid var(--line); border-radius: 20px;
   padding: 34px 30px; position: relative;
@@ -265,6 +266,7 @@ img, svg { display: block; }
   position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
   background: var(--teal-600); color: #fff; font-size: 12px; font-weight: 700;
   padding: 4px 16px; border-radius: 999px; letter-spacing: .04em; text-transform: uppercase;
+  white-space: nowrap;
 }
 .tier h3 { font-size: 18px; color: var(--slate); font-weight: 700; }
 .tier .price { font-size: 44px; font-weight: 800; margin: 6px 0 4px; letter-spacing: -0.03em; }
@@ -608,4 +610,9 @@ code.snippet {
   .app-nav-inner { gap: 14px; padding: 10px 14px; }
   .app-tabs { display: none; }
   .app-support { padding: 7px 10px; font-size: 13px; }
+}
+
+/* Logged-in header: collapse section shortcuts below 1080px (kept in hamburger menu) */
+@media (max-width: 1080px) {
+  .nav-app-links a:not(:first-child) { display: none; }
 }
