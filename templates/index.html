@@ -296,7 +296,7 @@
   var form = document.getElementById('demo-form');
   var input = document.getElementById('demo-input');
   var PUBLIC_KEY = {{ site_agent_key|tojson }};
-  var sessionToken = null;
+  var sessionToken = Math.random().toString(36).slice(2) + Date.now().toString(36);
 
   function addMsg(text, who) {
     var d = document.createElement('div');
