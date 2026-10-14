@@ -5,6 +5,7 @@
   <div class="dash-head">
     <h1>Your agents</h1>
     <p class="muted">Manage your AI agents, view performance and access tools.</p>
+    {% if is_admin %}<p><a href="{{ url_for('admin_clients') }}">View client list →</a></p>{% endif %}
   </div>
   {% if demo_mode %}
   <div class="flash warning"><strong>DEMO MODE</strong> — no API key set, replies are keyword-based.</div>

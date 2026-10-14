@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<div class="dash">
+  <div class="dash-head">
+    <h1>Clients</h1>
+    <p class="muted">Businesses signed up for TryGabby. Activity only — agent contents stay private to their owners.</p>
+  </div>
+  {% if rows %}
+  <div class="card">
+    <table>
+      <thead>
+        <tr><th>Account</th><th>Joined</th><th>Agents</th><th>Chats (7d)</th></tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.email }}</td>
+          <td>{{ r.joined.strftime("%b") }} {{ r.joined.day }}, {{ r.joined.year }}</td>
+          <td>{{ r.agents }}</td>
+          <td>{{ r.conversations_7d }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card"><p class="muted">No client accounts yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}
