@@ -29,6 +29,7 @@
           <div class="acard-id">
             <div class="acard-name-row">
               <h2>{{ a.name }}</h2>
+              {% if a.public_key != site_key %}
               <div class="kebab">
                 <button type="button" class="kebab-btn" aria-label="Agent options" aria-haspopup="true">⋮</button>
                 <div class="kebab-menu" role="menu">
@@ -45,8 +46,12 @@
                   </form>
                 </div>
               </div>
+              {% endif %}
             </div>
             <div class="acard-meta">
+              {% if a.public_key == site_key %}
+              <span class="badge" style="background:#0d9488;">SITE</span>
+              {% endif %}
               {% if a.is_active %}
               <span class="badge live">LIVE</span>
               {% else %}
@@ -83,8 +88,10 @@
           <a class="btn secondary acard-btn{% if unread[a.id] %} btn-leads-hot{% endif %}" href="{{ url_for('agent_leads', agent_id=a.id) }}"><span>📥 Leads{% if unread[a.id] %} <span class="lead-badge">{{ unread[a.id] }}</span>{% endif %}</span><span aria-hidden="true">›</span></a>
         </div>
         <div class="acard-sub">
+          {% if a.public_key != site_key %}
           <a href="{{ url_for('agent_edit', agent_id=a.id) }}">✏️ Edit</a>
           <a href="{{ url_for('knowledge', agent_id=a.id) }}">📚 Knowledge</a>
+          {% endif %}
           <button type="button" class="copy-embed-btn" data-snippet="{{ snippets[a.id] }}">🔗 Embed</button>
         </div>
       </div>
