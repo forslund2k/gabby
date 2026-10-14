@@ -107,6 +107,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)  # admin sees the site agent's leads/chats
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     agents = db.relationship("Agent", backref="owner", cascade="all, delete-orphan")
 
@@ -190,6 +191,7 @@ def lead_methods(agent):
 
 def _lead_instruction(agent):
     methods = lead_methods(agent)
+    team = "Todd" if agent.public_key == SITE_AGENT_PUBLIC_KEY else "the team"
     if not methods:
         return ("If the visitor asks to be contacted, politely explain the team "
                 "isn't taking callback requests right now and offer to help another way.")
@@ -199,12 +201,12 @@ def _lead_instruction(agent):
                   "email": "their email address"}[methods[0][0]]
         return ("If the visitor asks to be contacted or wants a callback, warmly ask "
                 f"for their name and {detail}, and confirm you'll pass it along "
-                "to the team right away.")
+                f"to {team} right away.")
     opts = ", ".join(m[1] for m in methods[:-1]) + f", or {methods[-1][1]}"
     return ("If the visitor asks to be contacted or wants a callback, warmly ask how "
             f"they'd like to be reached — {opts}. Then collect their name and the "
             "matching contact detail (phone number for a call or text, email address "
-            "for email), and confirm you'll pass it along to the team right away. "
+            f"for email), and confirm you'll pass it along to {team} right away. "
             "After that, if they haven't shared one of the other allowed methods, "
             "offer it once as a backup — e.g. 'Want to add an email too, in case we "
             "can't reach you at that number?' If they decline, thank them and move on; "
@@ -237,6 +239,9 @@ def login_required(view):
 
 def get_agent_or_404(agent_id, user):
     agent = Agent.query.filter_by(id=agent_id, user_id=user.id).first()
+    if not agent and getattr(user, "is_admin", False):
+        # Admins may also open the built-in site assistant (read-only in practice).
+        agent = Agent.query.filter_by(id=agent_id, public_key=SITE_AGENT_PUBLIC_KEY).first()
     if not agent:
         abort(404)
     return agent
@@ -744,12 +749,17 @@ def logout():
 def dashboard():
     user = current_user()
     agents = Agent.query.filter_by(user_id=user.id).order_by(Agent.created_at.desc()).all()
+    if getattr(user, "is_admin", False):
+        site_agent = Agent.query.filter_by(public_key=SITE_AGENT_PUBLIC_KEY).first()
+        if site_agent and all(a.id != site_agent.id for a in agents):
+            agents.insert(0, site_agent)
     base = request.host_url.rstrip("/")
     snippets = {a.id: f'<script src="{base}/embed/{a.public_key}.js"></script>' for a in agents}
     unread = {a.id: Lead.query.filter_by(agent_id=a.id, is_read=False).count() for a in agents}
     stats = {a.id: agent_stats(a) for a in agents}
     return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE,
-                           snippets=snippets, unread=unread, stats=stats)
+                           snippets=snippets, unread=unread, stats=stats,
+                           site_key=SITE_AGENT_PUBLIC_KEY)
 
 
 def _trend(this_week, last_week):
@@ -938,6 +948,8 @@ def agent_leads_read(agent_id):
 def agent_delete(agent_id):
     user = current_user()
     agent = get_agent_or_404(agent_id, user)
+    if agent.public_key == SITE_AGENT_PUBLIC_KEY:
+        abort(403)  # the built-in site assistant can't be deleted
     db.session.delete(agent)
     db.session.commit()
     flash(f"Agent '{agent.name}' deleted.", "ok")
@@ -984,6 +996,8 @@ def agent_toggle_active(agent_id):
     """Disable/enable an agent. Disabled agents show offline in the widget."""
     user = current_user()
     agent = get_agent_or_404(agent_id, user)
+    if agent.public_key == SITE_AGENT_PUBLIC_KEY:
+        abort(403)  # the built-in site assistant can't be disabled
     agent.is_active = not getattr(agent, "is_active", True)
     db.session.commit()
     flash(f"'{agent.name}' is now {'live' if agent.is_active else 'disabled'}.", "ok")
@@ -1270,7 +1284,7 @@ def send_lead_email(owner_email, agent_name, lead, leads_url):
     api_key = os.environ.get("RESEND_API_KEY", "").strip()
     if not api_key or not owner_email:
         return
-    from_addr = os.environ.get("LEAD_EMAIL_FROM", "TryGabby <leads@trygabby.com>").strip()
+    from_addr = os.environ.get("LEAD_EMAIL_FROM", SUPPORT_FROM).strip()
 
     def esc(v):
         return _html.escape(str(v or "-"))
@@ -1455,9 +1469,7 @@ def api_chat():
     asst_msg = Message(conversation_id=conv.id, role="assistant", content=reply)
     db.session.add(user_msg)
     db.session.add(asst_msg)
-    new_lead = None
-    if agent.public_key != SITE_AGENT_PUBLIC_KEY:
-        new_lead = capture_lead(agent, conv, user_msg, asst_msg, history)
+    new_lead = capture_lead(agent, conv, user_msg, asst_msg, history)
     lead_info = None
     if new_lead:
         lead_info = {"name": new_lead.name, "phone": new_lead.phone,
@@ -1466,10 +1478,15 @@ def api_chat():
                      "sms_consent": new_lead.sms_consent}
     db.session.commit()
     if lead_info:
-        owner = db.session.get(User, agent.user_id)
+        if agent.public_key == SITE_AGENT_PUBLIC_KEY:
+            # Leads for Todd himself (from trygabby.com) go to the support inbox.
+            notify_email = SUPPORT_EMAIL
+        else:
+            owner = db.session.get(User, agent.user_id)
+            notify_email = owner.email if owner else ""
         leads_url = f"{request.host_url.rstrip('/')}/agents/{agent.id}/leads"
         threading.Thread(target=send_lead_email,
-                         args=(owner.email if owner else "", agent.name, lead_info, leads_url),
+                         args=(notify_email, agent.name, lead_info, leads_url),
                          daemon=True).start()
     return jsonify({"reply": reply, "demo_mode": DEMO_MODE,
                     "session_token": conv.session_token,
@@ -1544,6 +1561,12 @@ def run_migrations():
             db.session.execute(db.text(
                 f"ALTER TABLE agent ADD COLUMN {_col} BOOLEAN DEFAULT TRUE"))
             db.session.commit()
+    _ucols = _table_columns("user")
+    if "is_admin" not in _ucols:
+        # "user" is reserved in Postgres — quote the table name (SQLite accepts it too).
+        db.session.execute(db.text(
+            'ALTER TABLE "user" ADD COLUMN is_admin BOOLEAN DEFAULT FALSE'))
+        db.session.commit()
     _lcols = _table_columns("lead")
     if "contact_method" not in _lcols:
         db.session.execute(db.text(
@@ -1589,7 +1612,10 @@ def ensure_site_agent():
         "Keep answers short and conversational (1-3 sentences). If asked "
         "about something not in your knowledge, say you don't know and "
         "suggest signing up ($20 first month, then $39/mo). Never invent pricing, "
-        "features, or customer stories."
+        "features, or customer stories. If a visitor wants Todd to contact them — "
+        "for a demo, a callback, or any question — warmly collect their name and "
+        "preferred contact (phone number or email) and confirm Todd will personally "
+        "reach out."
     )
     agent = Agent.query.filter_by(public_key=SITE_AGENT_PUBLIC_KEY).first()
     if agent and agent.chunks and getattr(agent, "site_knowledge_hash", "") == md_hash:
@@ -1640,6 +1666,12 @@ with app.app_context():
     db.create_all()
     run_migrations()
     ensure_site_agent()
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    if admin_email:
+        admin_user = User.query.filter(db.func.lower(User.email) == admin_email).first()
+        if admin_user and not admin_user.is_admin:
+            admin_user.is_admin = True
+            db.session.commit()
 
 
 if __name__ == "__main__":
