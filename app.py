@@ -759,7 +759,8 @@ def dashboard():
     stats = {a.id: agent_stats(a) for a in agents}
     return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE,
                            snippets=snippets, unread=unread, stats=stats,
-                           site_key=SITE_AGENT_PUBLIC_KEY)
+                           site_key=SITE_AGENT_PUBLIC_KEY,
+                           is_admin=getattr(user, "is_admin", False))
 
 
 def _trend(this_week, last_week):
@@ -932,6 +933,36 @@ def agent_leads(agent_id):
     agent = get_agent_or_404(agent_id, current_user())
     leads = Lead.query.filter_by(agent_id=agent.id).order_by(Lead.created_at.desc()).all()
     return render_template("leads.html", agent=agent, leads=leads)
+
+
+@app.route("/admin/clients")
+@login_required
+def admin_clients():
+    """Owner roster: who signed up and whether they're using it. Admins only.
+    Shows accounts and activity counts — never agent contents."""
+    user = current_user()
+    if not getattr(user, "is_admin", False):
+        abort(404)
+    clients = User.query.filter(
+        User.email != SITE_AGENT_EMAIL,
+        User.is_admin.is_(False),
+    ).order_by(User.created_at.desc()).all()
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    rows = []
+    for c in clients:
+        agent_ids = [a.id for a in c.agents]
+        conv_7d = 0
+        if agent_ids:
+            conv_7d = Conversation.query.filter(
+                Conversation.agent_id.in_(agent_ids),
+                Conversation.created_at >= week_ago).count()
+        rows.append({
+            "email": c.email,
+            "joined": c.created_at,
+            "agents": len(agent_ids),
+            "conversations_7d": conv_7d,
+        })
+    return render_template("admin_clients.html", rows=rows)
 
 
 @app.route("/agents/<int:agent_id>/leads/read", methods=["POST"])
