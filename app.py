@@ -995,12 +995,79 @@ def admin_clients():
                 Conversation.agent_id.in_(agent_ids),
                 Conversation.created_at >= week_ago).count()
         rows.append({
+            "id": c.id,
             "email": c.email,
             "joined": c.created_at,
             "agents": len(agent_ids),
             "conversations_7d": conv_7d,
         })
     return render_template("admin_clients.html", rows=rows)
+
+
+@app.route("/admin/clients/<int:user_id>/delete", methods=["GET"])
+@login_required
+def admin_client_delete_confirm(user_id):
+    """Warning page before removing a client — shows exactly what goes."""
+    user = current_user()
+    if not getattr(user, "is_admin", False):
+        abort(404)
+    target = User.query.get(user_id)
+    if target is None:
+        abort(404)
+    if target.id == user.id or getattr(target, "is_admin", False) \
+            or target.email == SITE_AGENT_EMAIL:
+        flash("That account can't be removed.", "error")
+        return redirect(url_for("admin_clients"))
+    agent_ids = [a.id for a in target.agents]
+    conv_count = lead_count = 0
+    if agent_ids:
+        conv_count = Conversation.query.filter(
+            Conversation.agent_id.in_(agent_ids)).count()
+        lead_count = Lead.query.filter(
+            Lead.agent_id.in_(agent_ids)).count()
+    return render_template("admin_client_delete.html", target=target,
+                           agent_count=len(agent_ids),
+                           conv_count=conv_count, lead_count=lead_count)
+
+
+@app.route("/admin/clients/<int:user_id>/delete", methods=["POST"])
+@login_required
+def admin_client_delete(user_id):
+    """Remove a client account and everything attached to it. Admins only.
+
+    Deletes in FK order: messages, conversations, leads, knowledge chunks,
+    agents, then the user. Refuses admins, the signed-in admin themself, and
+    the site-agent system account."""
+    user = current_user()
+    if not getattr(user, "is_admin", False):
+        abort(404)
+    target = User.query.get(user_id)
+    if target is None:
+        abort(404)
+    if target.id == user.id or getattr(target, "is_admin", False) \
+            or target.email == SITE_AGENT_EMAIL:
+        flash("That account can't be removed.", "error")
+        return redirect(url_for("admin_clients"))
+    email = target.email
+    agent_ids = [a.id for a in target.agents]
+    if agent_ids:
+        conv_ids = [c.id for c in Conversation.query.filter(
+            Conversation.agent_id.in_(agent_ids)).all()]
+        if conv_ids:
+            Message.query.filter(
+                Message.conversation_id.in_(conv_ids)).delete(synchronize_session=False)
+        Conversation.query.filter(
+            Conversation.agent_id.in_(agent_ids)).delete(synchronize_session=False)
+        Lead.query.filter(
+            Lead.agent_id.in_(agent_ids)).delete(synchronize_session=False)
+        KnowledgeChunk.query.filter(
+            KnowledgeChunk.agent_id.in_(agent_ids)).delete(synchronize_session=False)
+        Agent.query.filter(
+            Agent.user_id == target.id).delete(synchronize_session=False)
+    User.query.filter(User.id == target.id).delete(synchronize_session=False)
+    db.session.commit()
+    flash(f"Removed {email} and everything attached to it.", "ok")
+    return redirect(url_for("admin_clients"))
 
 
 @app.route("/agents/<int:agent_id>/leads/read", methods=["POST"])
