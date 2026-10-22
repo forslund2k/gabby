@@ -10,7 +10,7 @@
   <div class="card">
     <table>
       <thead>
-        <tr><th>Account</th><th>Joined</th><th>Agents</th><th>Chats (7d)</th></tr>
+        <tr><th>Account</th><th>Joined</th><th>Agents</th><th>Chats (7d)</th><th></th></tr>
       </thead>
       <tbody>
         {% for r in rows %}
@@ -19,6 +19,9 @@
           <td>{{ r.joined.strftime("%b") }} {{ r.joined.day }}, {{ r.joined.year }}</td>
           <td>{{ r.agents }}</td>
           <td>{{ r.conversations_7d }}</td>
+          <td>
+            <a href="{{ url_for('admin_client_delete_confirm', user_id=r.id) }}" style="display:inline-block;border:1px solid #d33;color:#d33;border-radius:8px;padding:4px 10px;font-size:13px;text-decoration:none;">Remove</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
