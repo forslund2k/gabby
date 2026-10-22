@@ -1574,6 +1574,21 @@ def support():
     return render_template("support.html")
 
 
+@app.after_request
+def _api_cors(response):
+    """Let the chat widget work embedded on customers' own websites.
+
+    The widget is a plain script tag on another origin calling /api/chat with
+    fetch() — browsers require these CORS headers or they block the reply.
+    The API is keyed by the agent's public key and uses no cookies, so "*"
+    is safe here. Scoped to the chat API only."""
+    if request.path == "/api/chat":
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+    return response
+
+
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     data = request.get_json(force=True, silent=True) or {}
