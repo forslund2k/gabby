@@ -20,6 +20,7 @@ import math
 import secrets
 import hashlib
 import threading
+import time
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -1590,6 +1591,60 @@ def support():
     return render_template("support.html")
 
 
+def _lead_snapshot(lead):
+    return {"name": lead.name, "phone": lead.phone, "email": lead.email,
+            "message": lead.message, "contact_method": lead.contact_method,
+            "sms_consent": lead.sms_consent}
+
+
+def _notify_lead_owner(agent, lead_info):
+    """Email the agent's owner about a lead (the site agent's go to support)."""
+    if agent.public_key == SITE_AGENT_PUBLIC_KEY:
+        notify_email = SUPPORT_EMAIL
+    else:
+        owner = db.session.get(User, agent.user_id)
+        notify_email = owner.email if owner else ""
+    leads_url = f"{request.host_url.rstrip('/')}/agents/{agent.id}/leads"
+    threading.Thread(target=send_lead_email,
+                     args=(notify_email, agent.name, lead_info, leads_url),
+                     daemon=True).start()
+
+
+_last_lead_sweep = 0.0
+
+
+@app.before_request
+def _flush_stale_leads():
+    """Send held lead emails once a conversation has gone quiet.
+
+    The lead email is held while a backup question is outstanding; if the
+    visitor simply closes the chat instead of answering, this sweeper —
+    piggybacking on ordinary site traffic, checked at most once a minute —
+    sends it anyway once the conversation has been silent for five minutes."""
+    global _last_lead_sweep
+    now = time.time()
+    if now - _last_lead_sweep < 60:
+        return
+    _last_lead_sweep = now
+    try:
+        cutoff = datetime.utcnow() - timedelta(minutes=5)
+        held = Lead.query.filter(Lead.notified.is_(False)).all()
+        for lead in held:
+            if not (lead.phone or lead.email):
+                continue
+            last = db.session.query(db.func.max(Message.created_at)).filter_by(
+                conversation_id=lead.conversation_id).scalar()
+            if last is not None and last > cutoff:
+                continue  # conversation still active — keep holding
+            agent = db.session.get(Agent, lead.agent_id)
+            if agent is not None:
+                _notify_lead_owner(agent, _lead_snapshot(lead))
+            lead.notified = True
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 @app.after_request
 def _api_cors(response):
     """Let the chat widget work embedded on customers' own websites.
@@ -1649,23 +1704,11 @@ def api_chat():
     if lead is not None and not getattr(lead, "notified", False) \
             and (lead.phone or lead.email) \
             and not _asks_for_more_contact(reply):
-        lead_info = {"name": lead.name, "phone": lead.phone,
-                     "email": lead.email, "message": lead.message,
-                     "contact_method": lead.contact_method,
-                     "sms_consent": lead.sms_consent}
+        lead_info = _lead_snapshot(lead)
         lead.notified = True
     db.session.commit()
     if lead_info:
-        if agent.public_key == SITE_AGENT_PUBLIC_KEY:
-            # Leads for Todd himself (from trygabby.com) go to the support inbox.
-            notify_email = SUPPORT_EMAIL
-        else:
-            owner = db.session.get(User, agent.user_id)
-            notify_email = owner.email if owner else ""
-        leads_url = f"{request.host_url.rstrip('/')}/agents/{agent.id}/leads"
-        threading.Thread(target=send_lead_email,
-                         args=(notify_email, agent.name, lead_info, leads_url),
-                         daemon=True).start()
+        _notify_lead_owner(agent, lead_info)
     return jsonify({"reply": reply, "demo_mode": DEMO_MODE,
                     "session_token": conv.session_token,
                     "sources": [c.source_label for c in chunks]})
