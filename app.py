@@ -201,6 +201,11 @@ def _count_page_view():
     ua = (request.user_agent.string or "").lower()
     if any(m in ua for m in _BOT_UA_MARKERS):
         return
+    uid = session.get("user_id")
+    if uid:
+        viewer = db.session.get(User, uid)
+        if viewer is not None and viewer.is_admin:
+            return  # the admin's own visits don't count toward site traffic
     try:
         db.session.add(PageView(path=request.path))
         db.session.commit()
