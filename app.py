@@ -98,7 +98,9 @@ SUPPORT_FROM = "TryGabby Support <support@trygabby.com>"
 
 @app.context_processor
 def inject_version():
-    return {"gabby_version": GABBY_VERSION}
+    user = current_user()
+    return {"gabby_version": GABBY_VERSION,
+            "is_admin_user": bool(user and getattr(user, "is_admin", False))}
 
 # ---------------------------------------------------------------- models
 
@@ -149,6 +151,7 @@ class Lead(db.Model):
     contact_method = db.Column(db.String(10), default="")  # "call" | "sms" | "email"
     sms_consent = db.Column(db.Boolean, default=False)  # visitor agreed to receive texts
     is_read = db.Column(db.Boolean, default=False)
+    notified = db.Column(db.Boolean, default=False)  # owner email sent (once, when complete)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -1377,6 +1380,19 @@ def extract_lead(history):
     return None
 
 
+def _asks_for_more_contact(reply):
+    """True when the assistant's reply just asked the visitor for another
+    contact method (the backup offer) or for text-message consent. While one
+    of those questions is outstanding, the lead notification is held — the
+    answer may add a backup method, and the email should go out once,
+    complete, instead of firing the moment the first detail lands."""
+    if not reply or "?" not in reply:
+        return False
+    tail = reply.lower()[-240:]
+    return any(w in tail for w in ("email", "text", "backup", "reach you",
+                                   "another way", "phone", "cell", "mobile"))
+
+
 def capture_lead(agent, conv, user_msg_obj, assistant_msg_obj, history):
     """Create or update a Lead for this conversation if contact info was shared.
     Returns the Lead if newly created (for the new-lead email), else None."""
@@ -1623,13 +1639,21 @@ def api_chat():
     asst_msg = Message(conversation_id=conv.id, role="assistant", content=reply)
     db.session.add(user_msg)
     db.session.add(asst_msg)
-    new_lead = capture_lead(agent, conv, user_msg, asst_msg, history)
+    capture_lead(agent, conv, user_msg, asst_msg, history)
+    # Lead email timing: if the assistant just offered a backup contact method
+    # (or asked text consent), hold the notification — a later turn may add
+    # the backup, and the owner email should go out once, with everything in
+    # it. It flushes on the first turn whose reply asks for nothing more.
     lead_info = None
-    if new_lead:
-        lead_info = {"name": new_lead.name, "phone": new_lead.phone,
-                     "email": new_lead.email, "message": new_lead.message,
-                     "contact_method": new_lead.contact_method,
-                     "sms_consent": new_lead.sms_consent}
+    lead = Lead.query.filter_by(conversation_id=conv.id).first()
+    if lead is not None and not getattr(lead, "notified", False) \
+            and (lead.phone or lead.email) \
+            and not _asks_for_more_contact(reply):
+        lead_info = {"name": lead.name, "phone": lead.phone,
+                     "email": lead.email, "message": lead.message,
+                     "contact_method": lead.contact_method,
+                     "sms_consent": lead.sms_consent}
+        lead.notified = True
     db.session.commit()
     if lead_info:
         if agent.public_key == SITE_AGENT_PUBLIC_KEY:
@@ -1729,6 +1753,10 @@ def run_migrations():
     if "sms_consent" not in _lcols:
         db.session.execute(db.text(
             "ALTER TABLE lead ADD COLUMN sms_consent BOOLEAN DEFAULT FALSE"))
+        db.session.commit()
+    if "notified" not in _lcols:
+        db.session.execute(db.text(
+            "ALTER TABLE lead ADD COLUMN notified BOOLEAN DEFAULT FALSE"))
         db.session.commit()
     kcols = _table_columns("knowledge_chunk")
     if "embedding" not in kcols:
