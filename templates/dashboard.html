@@ -10,6 +10,18 @@
   {% if demo_mode %}
   <div class="flash warning"><strong>DEMO MODE</strong> — no API key set, replies are keyword-based.</div>
   {% endif %}
+  {% if is_admin and site_visits %}
+  <div style="background:#0b2b2b;border-radius:14px;padding:18px 22px;margin:0 0 20px;color:#e8f5f3;">
+    <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:10px;">Site traffic — trygabby.com</div>
+    <div style="display:flex;gap:36px;flex-wrap:wrap;">
+      <div><div style="font-size:30px;font-weight:700;line-height:1;">{{ site_visits.total }}</div><div style="font-size:13px;opacity:.75;margin-top:4px;">Total visits</div></div>
+      <div><div style="font-size:30px;font-weight:700;line-height:1;">{{ site_visits.today }}</div><div style="font-size:13px;opacity:.75;margin-top:4px;">Today</div></div>
+      <div><div style="font-size:30px;font-weight:700;line-height:1;">{{ site_visits.week }}</div><div style="font-size:13px;opacity:.75;margin-top:4px;">Last 7 days</div></div>
+      <div><div style="font-size:30px;font-weight:700;line-height:1;">{{ site_visits.month }}</div><div style="font-size:13px;opacity:.75;margin-top:4px;">Last 30 days</div></div>
+    </div>
+    <div style="font-size:12px;opacity:.55;margin-top:10px;">Counts homepage + pricing page visits; bots and crawlers are filtered out.</div>
+  </div>
+  {% endif %}
   {% if agents %}
   <div class="dash-grid">
     <div class="dash-cards">
