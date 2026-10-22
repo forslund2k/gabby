@@ -177,6 +177,33 @@ class Message(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class PageView(db.Model):
+    """One row per human visit to a public marketing page (bots filtered out)."""
+    id = db.Column(db.Integer, primary_key=True)
+    path = db.Column(db.String(120), default="/")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+_BOT_UA_MARKERS = ("bot", "spider", "crawl", "slurp", "curl", "wget",
+                   "python-requests", "headless", "lighthouse", "pingdom",
+                   "uptimerobot", "semrush", "ahrefs", "preview", "scanner")
+
+
+@app.before_request
+def _count_page_view():
+    """Site counter: record visits to the public pages for the admin dashboard."""
+    if request.method != "GET" or request.path not in ("/", "/pricing"):
+        return
+    ua = (request.user_agent.string or "").lower()
+    if any(m in ua for m in _BOT_UA_MARKERS):
+        return
+    try:
+        db.session.add(PageView(path=request.path))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 def lead_methods(agent):
     """Contact methods the owner allows, as (key, label) tuples."""
     methods = []
@@ -757,8 +784,19 @@ def dashboard():
     snippets = {a.id: f'<script src="{base}/embed/{a.public_key}.js"></script>' for a in agents}
     unread = {a.id: Lead.query.filter_by(agent_id=a.id, is_read=False).count() for a in agents}
     stats = {a.id: agent_stats(a) for a in agents}
+    site_visits = None
+    if getattr(user, "is_admin", False):
+        _now = datetime.utcnow()
+        _today = _now.replace(hour=0, minute=0, second=0, microsecond=0)
+        site_visits = {
+            "total": PageView.query.count(),
+            "today": PageView.query.filter(PageView.created_at >= _today).count(),
+            "week": PageView.query.filter(PageView.created_at >= _now - timedelta(days=7)).count(),
+            "month": PageView.query.filter(PageView.created_at >= _now - timedelta(days=30)).count(),
+        }
     return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE,
                            snippets=snippets, unread=unread, stats=stats,
+                           site_visits=site_visits,
                            site_key=SITE_AGENT_PUBLIC_KEY,
                            is_admin=getattr(user, "is_admin", False))
 
