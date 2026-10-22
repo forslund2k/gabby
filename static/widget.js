@@ -15,18 +15,19 @@
   var css = [
     "#gabby-bubble{position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;",
     "background:" + COLOR + ";color:#fff;border:none;cursor:pointer;font-size:28px;z-index:999998;",
-    "box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;}",
+    "box-shadow:0 4px 14px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;touch-action:manipulation;}",
     "#gabby-panel{position:fixed;bottom:92px;right:20px;width:340px;max-width:calc(100vw - 40px);",
     "height:460px;max-height:calc(100vh - 120px);background:#fff;border-radius:14px;z-index:999999;",
     "box-shadow:0 8px 30px rgba(0,0,0,.22);display:none;flex-direction:column;overflow:hidden;",
     "font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}",
-    "#gabby-head{background:" + COLOR + ";color:#fff;padding:12px 14px;font-weight:600;font-size:15px;}",
+    "#gabby-head{background:" + COLOR + ";color:#fff;padding:12px 14px;font-weight:600;font-size:15px;display:flex;justify-content:space-between;align-items:center;}",
+    "#gabby-close{display:none;background:none;border:none;color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:0 0 0 12px;}",
     "#gabby-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}",
     ".gabby-msg{max-width:82%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.4;}",
     ".gabby-user{align-self:flex-end;background:" + COLOR + ";color:#fff;border-bottom-right-radius:4px;}",
     ".gabby-bot{align-self:flex-start;background:#f1f1f4;color:#222;border-bottom-left-radius:4px;}",
     "#gabby-form{display:flex;border-top:1px solid #e5e5e5;}",
-    "#gabby-input{flex:1;border:none;padding:12px;font-size:14px;outline:none;}",
+    "#gabby-input{flex:1;border:none;padding:12px;font-size:16px;outline:none;}",
     "#gabby-send{background:" + COLOR + ";color:#fff;border:none;padding:0 16px;cursor:pointer;font-size:14px;}",
     "#gabby-mic{background:#fff;border:none;padding:0 10px 0 12px;cursor:pointer;color:#0d9488;display:flex;align-items:center;}",
     "#gabby-mic.listening{color:#16a34a;animation:gabby-pulse 1.2s infinite;}",
@@ -34,7 +35,16 @@
     "#gabby-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px;}",
     ".gabby-chip{border:1px solid " + COLOR + ";color:" + COLOR + ";background:#fff;border-radius:16px;",
     "padding:5px 12px;font-size:12.5px;cursor:pointer;}",
-    ".gabby-chip:hover{background:" + COLOR + ";color:#fff;}"
+    ".gabby-chip:hover{background:" + COLOR + ";color:#fff;}",
+    // Phones: the panel becomes a full-screen sheet (the standard chat-widget
+    // pattern) instead of a small floating desktop card.
+    "@media (max-width:480px){",
+    "#gabby-panel{top:0;right:0;bottom:0;left:0;width:auto;max-width:none;height:100%;height:100dvh;max-height:none;border-radius:0;}",
+    "#gabby-close{display:block;}",
+    ".gabby-msg{font-size:15px;}",
+    "#gabby-bubble{bottom:calc(16px + env(safe-area-inset-bottom));right:16px;}",
+    "#gabby-form{padding-bottom:env(safe-area-inset-bottom);}",
+    "}"
   ].join("\n");
   var style = document.createElement("style");
   style.textContent = css;
@@ -50,7 +60,7 @@
   var panel = document.createElement("div");
   panel.id = "gabby-panel";
   panel.innerHTML =
-    '<div id="gabby-head">' + AGENT_NAME + "</div>" +
+    '<div id="gabby-head"><span>' + AGENT_NAME + '</span><button id="gabby-close" type="button" aria-label="Close chat">&times;</button></div>' +
     '<div id="gabby-msgs"></div>' +
     '<div id="gabby-chips"></div>' +
     '<form id="gabby-form"><input id="gabby-input" placeholder="Type a message&hellip;" autocomplete="off"/>' +
@@ -101,15 +111,30 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
+  function setScrollLock(on) {
+    if (window.innerWidth <= 480) document.body.style.overflow = on ? "hidden" : "";
+  }
+
+  function closePanel() {
+    panel.style.display = "none";
+    setScrollLock(false);
+  }
+
   bubble.onclick = function () {
     var open = panel.style.display === "flex";
-    panel.style.display = open ? "none" : "flex";
-    if (!open && !msgs.children.length) {
+    if (open) { closePanel(); return; }
+    panel.style.display = "flex";
+    setScrollLock(true);
+    if (!msgs.children.length) {
       addMsg(GREETING, "gabby-bot");
       renderChips();
     }
-    if (!open) input.focus();
+    // Auto-focus only with a real keyboard/mouse — on phones, focusing pops
+    // the keyboard open uninvited and (with small input text) zooms the page.
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) input.focus();
   };
+
+  panel.querySelector("#gabby-close").onclick = closePanel;
 
   form.onsubmit = function (e) {
     e.preventDefault();
