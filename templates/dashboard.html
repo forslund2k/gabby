@@ -45,6 +45,17 @@
       <div><div style="font-size:30px;font-weight:700;line-height:1;">{{ site_visits.month }}</div><div style="font-size:13px;opacity:.75;margin-top:4px;">Last 30 days</div></div>
     </div>
     <div style="font-size:12px;opacity:.55;margin-top:10px;">Counts homepage + pricing page visits; bots and crawlers are filtered out.</div>
+    {% if outreach_clicks %}
+    <div style="margin-top:14px;border-top:1px solid rgba(255,255,255,.15);padding-top:12px;">
+      <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:8px;">Outreach link clicks</div>
+      {% for c in outreach_clicks %}
+      <div style="display:flex;justify-content:space-between;gap:16px;font-size:14px;padding:3px 0;">
+        <span>{{ c.name }}</span>
+        <span style="opacity:.85;">{{ c.clicks }} click{{ 's' if c.clicks != 1 }} · last {{ c.last }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
   {% endif %}
   {% if agents %}
