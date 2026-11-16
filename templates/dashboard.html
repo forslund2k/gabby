@@ -10,6 +10,31 @@
   {% if demo_mode %}
   <div class="flash warning"><strong>DEMO MODE</strong> — no API key set, replies are keyword-based.</div>
   {% endif %}
+  {% if billing_on and not is_admin %}
+    {% if not sub_active %}
+  <div class="flash warning">
+    <strong>Your agents aren't live yet.</strong> Activate your subscription and your Gabby agent starts answering customers right away — $20 for the first month, then $39/mo. Cancel anytime.
+    <form method="post" action="{{ url_for('billing_checkout') }}" style="margin-top:10px;">
+      <button type="submit" class="btn">Activate now</button>
+    </form>
+  </div>
+    {% elif sub_status == 'past_due' %}
+  <div class="flash warning">
+    <strong>Payment issue.</strong> Your last subscription payment didn't go through. Your agent keeps working for a few more days — update your payment method to stay live.
+    <form method="post" action="{{ url_for('billing_portal') }}" style="margin-top:10px;">
+      <button type="submit" class="btn">Update payment method</button>
+    </form>
+  </div>
+    {% endif %}
+    {% if sub_active and has_billing_acct %}
+  <div style="margin:0 0 16px;">
+    <span class="muted" style="margin-right:10px;">Subscription: <strong>Active</strong></span>
+    <form method="post" action="{{ url_for('billing_portal') }}" style="display:inline;">
+      <button type="submit" class="btn btn-sm">Manage subscription</button>
+    </form>
+  </div>
+    {% endif %}
+  {% endif %}
   {% if is_admin and site_visits %}
   <div style="background:#0b2b2b;border-radius:14px;padding:18px 22px;margin:0 0 20px;color:#e8f5f3;">
     <div style="font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.75;margin-bottom:10px;">Site traffic — trygabby.com</div>
