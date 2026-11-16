@@ -19,6 +19,7 @@ import json
 import math
 import secrets
 import hashlib
+import hmac
 import threading
 import time
 from datetime import datetime, timedelta
@@ -53,7 +54,7 @@ GABBY_MODEL = os.environ.get("GABBY_MODEL", "gpt-4o-mini")
 GABBY_EMBED_MODEL = os.environ.get("GABBY_EMBED_MODEL", "text-embedding-3-small")
 DEMO_MODE = not GABBY_API_KEY
 
-GABBY_VERSION = "0.23.0"
+GABBY_VERSION = "0.24.0"
 
 CRAWL_MAX_PAGES = 100
 CRAWL_MAX_CHARS = 50000
@@ -96,6 +97,18 @@ SITE_AGENT_SUGGESTIONS = [
 SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL", "tforslund@gmail.com")
 SUPPORT_FROM = "TryGabby Support <support@trygabby.com>"
 
+# Stripe billing. When the secret key + price id are present in the
+# environment, the paywall is live: customers check out in-app and a
+# Stripe webhook activates their account the moment payment lands.
+# Until then billing is unconfigured and nothing is gated (fail-open),
+# so this code can deploy before the Stripe setup errands are done.
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_PRICE_ID = os.environ.get("STRIPE_PRICE_ID", "").strip()
+STRIPE_COUPON_ID = os.environ.get("STRIPE_COUPON_ID", "").strip()
+STRIPE_API_BASE = "https://api.stripe.com/v1"
+SUB_GRACE_DAYS = 7  # a past_due subscription keeps working this long
+
 
 @app.context_processor
 def inject_version():
@@ -111,6 +124,10 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)  # admin sees the site agent's leads/chats
+    stripe_customer_id = db.Column(db.String(64), default="")
+    stripe_subscription_id = db.Column(db.String(64), default="")
+    sub_status = db.Column(db.String(32), default="")  # "" | active | past_due | canceled | ...
+    past_due_since = db.Column(db.DateTime, nullable=True)  # grace clock for past_due
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     agents = db.relationship("Agent", backref="owner", cascade="all, delete-orphan")
 
@@ -777,6 +794,262 @@ def logout():
     return redirect(url_for("index"))
 
 
+
+# ---------------------------------------------------------------- billing (Stripe)
+
+
+def billing_enabled():
+    """The paywall is live only once Stripe is configured in the environment."""
+    return bool(STRIPE_SECRET_KEY and STRIPE_PRICE_ID)
+
+
+def subscription_active(user):
+    """Can this user's agents answer the public right now?
+
+    Admins and the internal system user are always on. When billing is not
+    configured yet, nobody is gated (fail-open). A past_due subscription
+    keeps working for SUB_GRACE_DAYS while Stripe retries the card.
+    """
+    if user is None:
+        return False
+    if getattr(user, "is_admin", False) or user.email == SITE_AGENT_EMAIL:
+        return True
+    if not billing_enabled():
+        return True
+    status = (getattr(user, "sub_status", "") or "").lower()
+    if status in ("active", "trialing"):
+        return True
+    if status == "past_due":
+        since = getattr(user, "past_due_since", None)
+        if since is None:
+            return True
+        return datetime.utcnow() - since <= timedelta(days=SUB_GRACE_DAYS)
+    return False
+
+
+def _stripe_request(method, path, data=None):
+    """One Stripe API call with the secret key; parsed JSON out, raise on error."""
+    resp = requests.request(method, STRIPE_API_BASE + path,
+                            auth=(STRIPE_SECRET_KEY, ""), data=data or {},
+                            timeout=20)
+    payload = resp.json() if resp.content else {}
+    if resp.status_code >= 400:
+        msg = ((payload.get("error") or {}).get("message")
+               or f"Stripe returned {resp.status_code}")
+        raise RuntimeError(msg)
+    return payload
+
+
+def _sync_subscription(user, sub):
+    """Copy a Stripe subscription object's state onto the user row."""
+    if not sub:
+        return
+    if sub.get("id"):
+        user.stripe_subscription_id = sub["id"]
+    if sub.get("customer"):
+        user.stripe_customer_id = sub["customer"]
+    new_status = (sub.get("status") or "").lower()
+    if new_status:
+        if new_status == "past_due" and user.sub_status != "past_due":
+            user.past_due_since = datetime.utcnow()
+        elif new_status != "past_due":
+            user.past_due_since = None
+        user.sub_status = new_status
+    db.session.commit()
+
+
+@app.route("/billing/checkout", methods=["POST"])
+@login_required
+def billing_checkout():
+    """Send the signed-in customer to a Stripe Checkout subscription session."""
+    user = current_user()
+    if not billing_enabled():
+        flash("Payments aren't set up yet — please check back soon.", "error")
+        return redirect(url_for("dashboard"))
+    base = request.host_url.rstrip("/")
+    data = {
+        "mode": "subscription",
+        "line_items[0][price]": STRIPE_PRICE_ID,
+        "line_items[0][quantity]": "1",
+        "client_reference_id": str(user.id),
+        "metadata[user_id]": str(user.id),
+        "subscription_data[metadata][user_id]": str(user.id),
+        "success_url": base + "/billing/success?session_id={CHECKOUT_SESSION_ID}",
+        "cancel_url": base + "/dashboard",
+    }
+    if STRIPE_COUPON_ID:
+        data["discounts[0][coupon]"] = STRIPE_COUPON_ID
+    if user.stripe_customer_id:
+        data["customer"] = user.stripe_customer_id
+    else:
+        data["customer_email"] = user.email
+    try:
+        sess = _stripe_request("POST", "/checkout/sessions", data)
+    except Exception:
+        app.logger.exception("Stripe checkout session creation failed")
+        flash("Something went wrong starting checkout — please try again.", "error")
+        return redirect(url_for("dashboard"))
+    return redirect(sess["url"])
+
+
+@app.route("/billing/success")
+@login_required
+def billing_success():
+    """Landing page after checkout. Syncs the subscription immediately so
+    activation feels instant; the webhook remains the source of truth."""
+    user = current_user()
+    session_id = request.args.get("session_id", "")
+    if billing_enabled() and session_id:
+        try:
+            sess = _stripe_request("GET", f"/checkout/sessions/{session_id}")
+            if str(sess.get("client_reference_id")) == str(user.id) \
+                    and sess.get("payment_status") in ("paid", "no_payment_required"):
+                if sess.get("customer"):
+                    user.stripe_customer_id = sess["customer"]
+                sub_id = sess.get("subscription")
+                if sub_id:
+                    user.stripe_subscription_id = sub_id
+                    try:
+                        sub = _stripe_request("GET", f"/subscriptions/{sub_id}")
+                        _sync_subscription(user, sub)
+                    except Exception:
+                        user.sub_status = "active"
+                        user.past_due_since = None
+                        db.session.commit()
+                else:
+                    db.session.commit()
+        except Exception:
+            app.logger.exception("Billing success sync failed")
+    if subscription_active(user):
+        flash("You're activated — your agents are live. Welcome aboard!", "ok")
+    else:
+        flash("Payment received — activation can take a minute. Refresh shortly.", "ok")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/billing/portal", methods=["POST"])
+@login_required
+def billing_portal():
+    """Stripe-hosted self-serve page: update card, see invoices, cancel."""
+    user = current_user()
+    if not billing_enabled() or not user.stripe_customer_id:
+        flash("No billing account found yet.", "error")
+        return redirect(url_for("dashboard"))
+    try:
+        sess = _stripe_request("POST", "/billing_portal/sessions", {
+            "customer": user.stripe_customer_id,
+            "return_url": request.host_url.rstrip("/") + "/dashboard",
+        })
+    except Exception:
+        app.logger.exception("Stripe portal session creation failed")
+        flash("Couldn't open billing settings — please try again.", "error")
+        return redirect(url_for("dashboard"))
+    return redirect(sess["url"])
+
+
+def _user_for_stripe_event(obj):
+    """Resolve which Gabby user a Stripe object belongs to."""
+    meta = obj.get("metadata") or {}
+    uid = meta.get("user_id")
+    if uid:
+        try:
+            found = db.session.get(User, int(uid))
+            if found:
+                return found
+        except (TypeError, ValueError):
+            pass
+    cust = obj.get("customer")
+    if cust:
+        return User.query.filter_by(stripe_customer_id=cust).first()
+    return None
+
+
+@app.route("/stripe/webhook", methods=["POST"])
+def stripe_webhook():
+    """Stripe calls this the moment money moves. Signature-verified.
+
+    checkout.session.completed links the payer to their Gabby account;
+    subscription lifecycle events keep sub_status in sync from then on.
+    """
+    if not STRIPE_WEBHOOK_SECRET:
+        return jsonify({"error": "webhook not configured"}), 503
+    payload = request.get_data()
+    header = request.headers.get("Stripe-Signature", "")
+    timestamps, signatures = [], []
+    for piece in header.split(","):
+        if "=" not in piece:
+            continue
+        key, val = piece.split("=", 1)
+        if key.strip() == "t":
+            timestamps.append(val.strip())
+        elif key.strip() == "v1":
+            signatures.append(val.strip())
+    if not timestamps or not signatures:
+        return jsonify({"error": "bad signature header"}), 400
+    try:
+        ts = int(timestamps[0])
+    except ValueError:
+        return jsonify({"error": "bad timestamp"}), 400
+    if abs(time.time() - ts) > 300:
+        return jsonify({"error": "stale event"}), 400
+    signed = timestamps[0].encode() + b"." + payload
+    expected = hmac.new(STRIPE_WEBHOOK_SECRET.encode(), signed,
+                        hashlib.sha256).hexdigest()
+    if not any(hmac.compare_digest(expected, sig) for sig in signatures):
+        return jsonify({"error": "signature mismatch"}), 400
+    event = request.get_json(force=True, silent=True) or {}
+    etype = event.get("type", "")
+    obj = (event.get("data") or {}).get("object") or {}
+    try:
+        if etype == "checkout.session.completed" and obj.get("mode") == "subscription":
+            user = None
+            ref = obj.get("client_reference_id")
+            if ref:
+                try:
+                    user = db.session.get(User, int(ref))
+                except (TypeError, ValueError):
+                    user = None
+            if user is None:
+                user = _user_for_stripe_event(obj)
+            if user is not None:
+                if obj.get("customer"):
+                    user.stripe_customer_id = obj["customer"]
+                sub_id = obj.get("subscription")
+                if sub_id:
+                    user.stripe_subscription_id = sub_id
+                    try:
+                        sub = _stripe_request("GET", f"/subscriptions/{sub_id}")
+                        _sync_subscription(user, sub)
+                    except Exception:
+                        # A completed checkout means the money is good;
+                        # don't let a follow-up read failure block activation.
+                        user.sub_status = "active"
+                        user.past_due_since = None
+                        db.session.commit()
+                else:
+                    user.sub_status = "active"
+                    user.past_due_since = None
+                    db.session.commit()
+        elif etype in ("customer.subscription.created",
+                       "customer.subscription.updated",
+                       "customer.subscription.deleted"):
+            user = _user_for_stripe_event(obj)
+            if user is not None:
+                if etype == "customer.subscription.deleted":
+                    obj = dict(obj, status="canceled")
+                _sync_subscription(user, obj)
+        elif etype == "invoice.payment_failed":
+            user = _user_for_stripe_event(obj)
+            if user is not None and user.sub_status != "past_due":
+                user.sub_status = "past_due"
+                user.past_due_since = datetime.utcnow()
+                db.session.commit()
+    except Exception:
+        app.logger.exception("Stripe webhook handling failed")
+        return jsonify({"error": "handler error"}), 500
+    return jsonify({"received": True})
+
+
 # ---------------------------------------------------------------- dashboard / agents
 
 
@@ -807,7 +1080,11 @@ def dashboard():
                            snippets=snippets, unread=unread, stats=stats,
                            site_visits=site_visits,
                            site_key=SITE_AGENT_PUBLIC_KEY,
-                           is_admin=getattr(user, "is_admin", False))
+                           is_admin=getattr(user, "is_admin", False),
+                           billing_on=billing_enabled(),
+                           sub_active=subscription_active(user),
+                           sub_status=getattr(user, "sub_status", "") or "",
+                           has_billing_acct=bool(getattr(user, "stripe_customer_id", "")))
 
 
 def _trend(this_week, last_week):
@@ -1009,6 +1286,7 @@ def admin_clients():
             "joined": c.created_at,
             "agents": len(agent_ids),
             "conversations_7d": conv_7d,
+            "sub_status": getattr(c, "sub_status", "") or "",
         })
     return render_template("admin_clients.html", rows=rows)
 
@@ -1679,6 +1957,20 @@ def api_chat():
         return jsonify({"reply": "This chat is currently offline. Please check back later.",
                         "demo_mode": DEMO_MODE, "session_token": session_token or "",
                         "sources": []})
+    # Paywall: a customer's agent answers the public only while their
+    # subscription is active. The owner testing here while signed in, and
+    # admins, are never gated; neither is the built-in site assistant.
+    # (Widget calls arrive cross-origin with no session, so current_user()
+    # is None for real visitors — exactly the calls that must be gated.)
+    if agent.public_key != SITE_AGENT_PUBLIC_KEY:
+        viewer = current_user()
+        if not (viewer is not None
+                and (viewer.id == agent.user_id
+                     or getattr(viewer, "is_admin", False))):
+            if not subscription_active(agent.owner):
+                return jsonify({"reply": "This chat is currently offline. Please check back later.",
+                                "demo_mode": DEMO_MODE, "session_token": session_token or "",
+                                "sources": []})
     if not user_message:
         return jsonify({"error": "Empty message."}), 400
 
@@ -1793,6 +2085,16 @@ def run_migrations():
         db.session.execute(db.text(
             'ALTER TABLE "user" ADD COLUMN is_admin BOOLEAN DEFAULT FALSE'))
         db.session.commit()
+    for _col, _ddl in (
+        ("stripe_customer_id", "VARCHAR(64) DEFAULT ''"),
+        ("stripe_subscription_id", "VARCHAR(64) DEFAULT ''"),
+        ("sub_status", "VARCHAR(32) DEFAULT ''"),
+        ("past_due_since", "TIMESTAMP"),
+    ):
+        if _col not in _ucols:
+            db.session.execute(db.text(
+                f'ALTER TABLE "user" ADD COLUMN {_col} {_ddl}'))
+            db.session.commit()
     _lcols = _table_columns("lead")
     if "contact_method" not in _lcols:
         db.session.execute(db.text(
