@@ -54,7 +54,7 @@ GABBY_MODEL = os.environ.get("GABBY_MODEL", "gpt-4o-mini")
 GABBY_EMBED_MODEL = os.environ.get("GABBY_EMBED_MODEL", "text-embedding-3-small")
 DEMO_MODE = not GABBY_API_KEY
 
-GABBY_VERSION = "0.24.0"
+GABBY_VERSION = "0.25.0"
 
 CRAWL_MAX_PAGES = 100
 CRAWL_MAX_CHARS = 50000
@@ -202,6 +202,9 @@ class PageView(db.Model):
     """One row per human visit to a public marketing page (bots filtered out)."""
     id = db.Column(db.Integer, primary_key=True)
     path = db.Column(db.String(120), default="/")
+    # Outreach tag from the link the visitor arrived on (e.g. ?ref=swick-home-services);
+    # "" for ordinary untagged visits.
+    ref = db.Column(db.String(80), default="", index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
@@ -223,8 +226,10 @@ def _count_page_view():
         viewer = db.session.get(User, uid)
         if viewer is not None and viewer.is_admin:
             return  # the admin's own visits don't count toward site traffic
+    raw_ref = (request.args.get("ref") or "").strip().lower()
+    ref = re.sub(r"[^a-z0-9-]", "", raw_ref)[:80]
     try:
-        db.session.add(PageView(path=request.path))
+        db.session.add(PageView(path=request.path, ref=ref))
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1067,6 +1072,7 @@ def dashboard():
     unread = {a.id: Lead.query.filter_by(agent_id=a.id, is_read=False).count() for a in agents}
     stats = {a.id: agent_stats(a) for a in agents}
     site_visits = None
+    outreach_clicks = []
     if getattr(user, "is_admin", False):
         _now = datetime.utcnow()
         _today = _now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -1076,9 +1082,34 @@ def dashboard():
             "week": PageView.query.filter(PageView.created_at >= _now - timedelta(days=7)).count(),
             "month": PageView.query.filter(PageView.created_at >= _now - timedelta(days=30)).count(),
         }
+        # Per-business outreach clicks: one row per ?ref= tag, most recent first.
+        try:
+            _tz = ZoneInfo("America/Detroit")
+        except Exception:
+            _tz = None
+        _rows = (db.session.query(PageView.ref, db.func.count(PageView.id),
+                                  db.func.max(PageView.created_at))
+                 .filter(PageView.ref != "")
+                 .group_by(PageView.ref)
+                 .order_by(db.func.max(PageView.created_at).desc())
+                 .all())
+        for _ref, _count, _last in _rows:
+            if _last is not None and _tz is not None:
+                _last_str = (_last.replace(tzinfo=ZoneInfo("UTC"))
+                             .astimezone(_tz).strftime("%b %d, %I:%M %p"))
+            elif _last is not None:
+                _last_str = _last.strftime("%b %d, %I:%M %p UTC")
+            else:
+                _last_str = ""
+            outreach_clicks.append({
+                "ref": _ref,
+                "name": _ref.replace("-", " ").title(),
+                "clicks": _count,
+                "last": _last_str,
+            })
     return render_template("dashboard.html", agents=agents, demo_mode=DEMO_MODE,
                            snippets=snippets, unread=unread, stats=stats,
-                           site_visits=site_visits,
+                           site_visits=site_visits, outreach_clicks=outreach_clicks,
                            site_key=SITE_AGENT_PUBLIC_KEY,
                            is_admin=getattr(user, "is_admin", False),
                            billing_on=billing_enabled(),
@@ -2112,6 +2143,11 @@ def run_migrations():
     if "embedding" not in kcols:
         db.session.execute(db.text(
             "ALTER TABLE knowledge_chunk ADD COLUMN embedding TEXT DEFAULT ''"))
+        db.session.commit()
+    _pcols = _table_columns("page_view")
+    if "ref" not in _pcols:
+        db.session.execute(db.text(
+            "ALTER TABLE page_view ADD COLUMN ref VARCHAR(80) DEFAULT ''"))
         db.session.commit()
 
 
