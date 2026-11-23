@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Tutorial — Gabby{% endblock %}
+{% block main_class %}landing{% endblock %}
+{% block head %}
+<style>main.landing { padding: 0; }
+.trailer-wrap { max-width: 820px; margin: 0 auto; }
+.trailer-video { width: 100%; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.18); display: block; }
+.tutorial-note { max-width: 680px; margin: 26px auto 0; text-align: center; }
+.tutorial-cta { text-align: center; margin-top: 30px; }</style>
+{% endblock %}
+{% block content %}
+
+<!-- ============ TUTORIAL VIDEO ============ -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">Tutorial</span>
+      <h2>How Gabby works — set up in one sitting.</h2>
+      <p>Watch the whole process, from signing up to a live chat bubble on your website.</p>
+    </div>
+    <div class="trailer-wrap">
+      <video class="trailer-video" controls preload="metadata" poster="{{ url_for('static', filename='whiteboard-tutorial-poster.jpg') }}">
+        <source src="{{ url_for('static', filename='whiteboard-tutorial.mp4') }}" type="video/mp4">
+        Your browser doesn't support video. <a href="{{ url_for('static', filename='whiteboard-tutorial.mp4') }}">Download the video</a>.
+      </video>
+    </div>
+    <p class="tutorial-note">Gabby answers your website visitors around the clock and sends you each lead's name and number. $20 for your first month, then $39/mo — cancel anytime.</p>
+    <div class="tutorial-cta">
+      <a class="btn" href="/signup">Get started</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE THREE STEPS ============ -->
+<section class="section alt">
+  <div class="section-inner">
+    <div class="section-head">
+      <span class="eyebrow">The short version</span>
+      <h2>Three steps and she's live.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Create your account</h3>
+        <p>Sign up at TryGabby and check out — $20 for your first month, then $39/mo.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Gabby reads your website</h3>
+        <p>Give Gabby your website address and she reads it herself, learning your hours, services, and menu. Add anything she missed, in plain English.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Paste one line of code</h3>
+        <p>Copy a single line onto your website, set to show on all pages. The chat bubble appears and Gabby starts answering — and sending you leads.</p>
+      </div>
+    </div>
+    <div class="tutorial-cta">
+      <a class="btn" href="/signup">Get started</a>
+    </div>
+  </div>
+</section>
+<script src="/embed/{{ site_agent_key }}.js"></script>
+{% endblock %}
