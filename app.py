@@ -54,7 +54,7 @@ GABBY_MODEL = os.environ.get("GABBY_MODEL", "gpt-4o-mini")
 GABBY_EMBED_MODEL = os.environ.get("GABBY_EMBED_MODEL", "text-embedding-3-small")
 DEMO_MODE = not GABBY_API_KEY
 
-GABBY_VERSION = "0.25.0"
+GABBY_VERSION = "0.26.0"
 
 CRAWL_MAX_PAGES = 100
 CRAWL_MAX_CHARS = 50000
@@ -216,7 +216,7 @@ _BOT_UA_MARKERS = ("bot", "spider", "crawl", "slurp", "curl", "wget",
 @app.before_request
 def _count_page_view():
     """Site counter: record visits to the public pages for the admin dashboard."""
-    if request.method != "GET" or request.path not in ("/", "/pricing"):
+    if request.method != "GET" or request.path not in ("/", "/pricing", "/tutorial"):
         return
     ua = (request.user_agent.string or "").lower()
     if any(m in ua for m in _BOT_UA_MARKERS):
@@ -759,6 +759,11 @@ def index():
 @app.route("/pricing")
 def pricing():
     return render_template("pricing.html", site_agent_key=SITE_AGENT_PUBLIC_KEY)
+
+
+@app.route("/tutorial")
+def tutorial():
+    return render_template("tutorial.html", site_agent_key=SITE_AGENT_PUBLIC_KEY)
 
 
 @app.route("/signup", methods=["GET", "POST"])
